@@ -67,7 +67,7 @@ No compilation or dependencies required.
 | **Intensity** | 0–100% | 50% | How strongly harmonics are generated. Start around 40–60% and increase to taste. |
 | **Original Bass** | 0–100% | 70% | Level of the original sub-bass in the output. Reducing this lets the harmonics carry more of the perceived bass on small speakers. |
 | **Harmonics Mix** | 0–100% | 50% | Blend of the generated harmonics into the output. |
-| **Output Gain** | -24 to +10 dB | -6 dB | Output trim. The default -6dB compensates for the level increase from added harmonics. |
+| **Output Gain** | -24 to +10 dB | 0 dB | Output trim. The default -6dB compensates for the level increase from added harmonics. |
 | **Harmonic Tilt** | 0–6 dB/oct | 4 dB/oct | How steeply the upper harmonics roll off. Higher values give a more natural, instrument-like decay of the harmonic series. 0 = flat (all harmonics equal level). |
 | **Harmonic Style** | — | Warm | **Warm**: 2nd and 3rd harmonic dominant — suits bass guitar and upright bass. **Tight**: odd harmonics — punchy and modern. **Full**: broadest harmonic series — suits synth bass and kick. |
 
