@@ -1,4 +1,21 @@
 desc: PsychoBass - Psychoacoustic Bass Enhancer
+// @description Psychoacoustic bass enhancement using timbre-matched harmonic generation.
+//              Adds upper harmonics to bass signals so they remain audible on small
+//              speakers and earbuds, without the synthetic character of naive harmonic
+//              generators. Based on published Virtual Bass System research.
+// @version 1.0.0
+// @author PsychoBass Contributors
+// @license MIT
+// @provides
+//   [effect] Effects/PsychoBass.jsfx
+// @link https://github.com/stevewcox/psychobass
+// @about
+//   # PsychoBass
+//   Psychoacoustic bass enhancer for Reaper. Generates harmonics from bass signals
+//   using a feedback-multiplier NLD with timbre-matched envelope companding, so the
+//   added content sounds like part of the original instrument rather than a synthesiser.
+//   See the README for full documentation and suggested settings.
+
 // Based on published research into Virtual Bass Systems (VBS):
 //   Ben-Tzur & Colloms, AES 1999 (MaxxBass / missing fundamental)
 //   Larsen & Aarts, JAES 2002 (NLD framework)

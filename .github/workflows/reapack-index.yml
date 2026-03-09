@@ -1,0 +1,46 @@
+name: ReaPack Index
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Effects/**'
+      - 'index.xml'
+
+jobs:
+  rebuild-index:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history needed by reapack-index
+
+      - name: Install Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Install reapack-index
+        run: gem install reapack-index
+
+      - name: Rebuild index.xml
+        run: |
+          reapack-index \
+            --rebuild \
+            --name "PsychoBass" \
+            --link "https://github.com/${{ github.repository }}" \
+            --output index.xml
+
+      - name: Commit updated index.xml
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.xml
+          git diff --cached --quiet || git commit -m "ci: rebuild ReaPack index [skip ci]"
+          git push

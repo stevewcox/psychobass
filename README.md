@@ -31,9 +31,26 @@ The challenge is generating those harmonics in a way that sounds like the origin
 
 ## Installation
 
-1. Download `PsychoBass.jsfx`
+### Via ReaPack (recommended)
+
+[ReaPack](https://reapack.com) is Reaper's package manager and handles installation and future updates automatically.
+
+1. In Reaper, go to **Extensions → ReaPack → Import a repository**
+2. Paste this URL:
+   ```
+   https://github.com/stevewcox/psychobass/raw/main/index.xml
+   ```
+3. Click **OK**, then **Extensions → ReaPack → Browse packages**
+4. Find **PsychoBass** and click **Install**
+5. Restart Reaper when prompted
+
+To receive future updates automatically, run **Extensions → ReaPack → Synchronize packages**.
+
+### Manual installation
+
+1. Download `Effects/PsychoBass.jsfx` from this repository
 2. Copy it to your Reaper JSFX folder:
-   - **Windows:** `%APPDATA%\REAPER\Effects\` (or a subfolder of your choice)
+   - **Windows:** `%APPDATA%\REAPER\Effects\`
    - **macOS:** `~/Library/Application Support/REAPER/Effects/`
    - **Linux:** `~/.config/REAPER/Effects/`
 3. In Reaper, open the FX chain on a track, click **Add**, and search for `PsychoBass`

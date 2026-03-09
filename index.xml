@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="PsychoBass">
+  <metadata>
+    <description><![CDATA[Psychoacoustic bass enhancement for Reaper.
+
+PsychoBass adds upper harmonics to bass signals so they remain audible on small
+speakers and earbuds, using timbre-matched harmonic generation that preserves the
+character of the original instrument.
+
+See https://github.com/stevewcox/psychobass for full documentation.]]></description>
+    <link rel="website">https://github.com/stevewcox/psychobass</link>
+  </metadata>
+  <category name="Effects">
+    <reapack name="PsychoBass.jsfx" type="effect" desc="PsychoBass - Psychoacoustic Bass Enhancer">
+      <metadata>
+        <description><![CDATA[Psychoacoustic bass enhancement using timbre-matched harmonic generation.
+
+Adds upper harmonics to bass signals so they remain audible on small speakers and
+earbuds, without the synthetic character of naive harmonic generators.
+
+Based on published Virtual Bass System research (Ben-Tzur/Colloms AES 1999,
+Larsen & Aarts JAES 2002, Mu/Gan/Tan ICASSP 2013).
+
+Controls:
+  Frequency       - Crossover point (40-200 Hz). Set just above your lowest note.
+  Intensity       - Harmonic generation amount (0-100%)
+  Original Bass   - Level of sub-bass in output (0-100%)
+  Harmonics Mix   - Blend of generated harmonics (0-100%)
+  Output Gain     - Output trim (-24 to +10 dB)
+  Harmonic Tilt   - Roll-off of upper harmonics (0-6 dB/oct)
+  Harmonic Style  - Warm (2nd+3rd), Tight (odd), Full (broadest)
+
+Suggested starting point for bass guitar:
+  Frequency: 85Hz, Intensity: 45%, Original Bass: 75%, Harmonics Mix: 55%,
+  Tilt: 4dB, Style: Warm]]></description>
+        <link rel="website">https://github.com/stevewcox/psychobass</link>
+      </metadata>
+      <version name="1.0.0" author="PsychoBass Contributors" time="2025-01-01T00:00:00Z">
+        <changelog><![CDATA[Initial release.
+
+- Feedback-multiplier NLD with exponential soft-clip
+- 4th-order Butterworth crossover
+- Timbre-matched envelope compander
+- Harmonic high-pass at 1.5x crossover (eliminates comb-filter notches)
+- Spectral tilt high-shelf cut (0-6 dB/oct)
+- Three harmonic styles: Warm, Tight, Full
+- Stereo processing
+- Output gain: -24dB to +10dB]]></changelog>
+        <source main="effect">https://github.com/stevewcox/psychobass/raw/main/Effects/PsychoBass.jsfx</source>
+      </version>
+    </reapack>
+  </category>
+</index>
