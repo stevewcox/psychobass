@@ -35,7 +35,7 @@ Suggested starting point for bass guitar:
   Tilt: 4dB, Style: Warm]]></description>
         <link rel="website">https://github.com/stevewcox/psychobass</link>
       </metadata>
-      <version name="1.0.0" author="PsychoBass Contributors" time="2025-01-01T00:00:00Z">
+      <version name="1.0.0" author="PsychoBass Contributors" time="2026-03-09T00:43:00Z">
         <changelog><![CDATA[Initial release.
 
 - Feedback-multiplier NLD with exponential soft-clip
