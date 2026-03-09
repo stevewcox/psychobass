@@ -36,7 +36,7 @@ Suggested starting point for bass guitar:
         <link rel="website">https://github.com/stevewcox/psychobass</link>
       </metadata>
       <version name="1.0.2" author="Steve Cox" time="2026-03-09T01:14:00Z">
-        <changelog><![CDATA[Initial release.
+        <changelog><![CDATA[Psycho-acoustic bass enhancer.
 
 - Feedback-multiplier NLD with exponential soft-clip
 - 4th-order Butterworth crossover
