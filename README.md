@@ -4,6 +4,9 @@
 
 PsychoBass adds upper harmonics to bass signals so they remain audible on small speakers and earbuds — without making the instrument sound electronic or synthetic. It is designed for bass guitar, upright bass, synthesiser bass, and kick drum.
 
+**Currently Pre-Release**
+
+The sound and levels of the plugin may differ between versions, please be aware if updating and revisting previous installations. At version 1.0.0, the output will remain consistent at the same settings and this pre-release warning will be removed. 
 ---
 
 ## The Problem It Solves

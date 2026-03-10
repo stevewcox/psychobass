@@ -5,12 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [1.1.5] - 2026-03-10
+## [0.2.5] - 2026-03-10
 
 ### Changed
 - **Minor Changes** to comments and descriptions
 
-## [1.1.4] - 2026-03-10
+## [0.2.4] - 2026-03-10
 
 ### Fixed
 - **Harmonic Style labels corrected** based on spectrum analysis of all three
@@ -19,7 +19,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Style 2: **Tight** (LP filtered, drops off ~600Hz, focused low-mids) — was "Full"
   - Style 3: **Bright** (raw NLD, extends to 10kHz+) — was "Tight"
 
-## [1.1.3] - 2026-03-10
+## [0.2.3] - 2026-03-10
 
 ### Fixed
 - **Warm and Tight processing paths swapped again**: spectrum analysis confirmed
@@ -27,7 +27,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the LP-filtered path (shorter, focused series) matches Tight. Paths now
   correctly assigned to their labels.
 
-## [1.1.2] - 2026-03-10
+## [0.2.2] - 2026-03-10
 
 ### Fixed
 - **Warm and Tight modes were behaviourally swapped**: the asymmetric blend
@@ -36,7 +36,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   labels. Warm now applies the LP filter only, with nothing added back
   afterwards. Tight uses a clean 50/50 NLD/rectified blend with no LP.
 
-## [1.1.1] - 2026-03-10
+## [0.2.1] - 2026-03-10
 
 ### Changed
 - **Output Gain default changed to 0dB** (was -6dB)
@@ -46,7 +46,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   clearly dominant. Previously Warm and Tight sounded nearly identical.
 - Warm mode LP filter slot added (indices 14,15 in biquad memory)
 
-## [1.1.0] - 2026-03-10
+## [0.2.0] - 2026-03-10
 
 ### Changed (informed by spectrum analysis against alternative product reference)
 
@@ -58,7 +58,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Default values updated**: Intensity 60% (was 50%), Harmonics Mix 65% (was 50%), Harmonic Style defaults to Warm, Tilt range extended to 8dB/oct.
 - **NLD coefficient raised**: feedback multiplier k increased from 0.7 to 1.2 for richer harmonic series.
 
-## [1.0.0] - 2026-03-09
+## [0.1.0] - 2026-03-09
 
 ### Initial release
 

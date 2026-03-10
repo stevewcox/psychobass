@@ -3,7 +3,7 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //              Adds upper harmonics to bass signals so they remain audible on small
 //              speakers and earbuds, without the synthetic character of naive harmonic
 //              generators. Based on published Virtual Bass System research.
-// @version 1.1.5
+// @version 0.2.5
 // @author stevewcox (Steve Cox / PsychoBass Contributors)
 // @license MIT
 // @provides
@@ -22,7 +22,7 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //   Mu, Gan & Tan, ICASSP 2013 (timbre matching)
 //   Oo & Gan (harmonic/IMD analysis of NLDs)
 //
-// v1.1.0 changes (informed by spectrum analysis vs alternative product):
+// v0.2.0 changes (informed by spectrum analysis vs alternative product):
 //   - NLD now driven with pre-gain before nonlinearity so harmonics
 //     activate properly at typical mix levels (-18 to -6 dBFS)
 //   - Compander role changed: no longer normalises harmonics DOWN to
