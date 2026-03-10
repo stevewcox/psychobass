@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="PsychoBass">
+<index version="1" name="SteveCoxJSFX">
   <metadata>
-    <description><![CDATA[Psychoacoustic bass enhancement for Reaper.
+    <description><![CDATA[JSFX plugins for Reaper by Steve Cox.
 
-PsychoBass adds upper harmonics to bass signals so they remain audible on small
-speakers and earbuds, using timbre-matched harmonic generation that preserves the
-character of the original instrument.
+Current plugins:
+  - PsychoBass: Psychoacoustic bass enhancement
 
-See https://github.com/stevewcox/psychobass for full documentation.]]></description>
-    <link rel="website">https://github.com/stevewcox/psychobass</link>
+See https://github.com/stevewcox/SteveCoxJSFX for full documentation.]]></description>
+    <link rel="website">https://github.com/stevewcox/SteveCoxJSFX</link>
   </metadata>
   <category name="Effects">
     <reapack name="PsychoBass.jsfx" type="effect" desc="PsychoBass - Psychoacoustic Bass Enhancer">
@@ -27,26 +26,28 @@ Controls:
   Original Bass   - Level of sub-bass in output (0-100%)
   Harmonics Mix   - Blend of generated harmonics (0-100%)
   Output Gain     - Output trim (-24 to +10 dB)
-  Harmonic Tilt   - Roll-off of upper harmonics (0-6 dB/oct)
-  Harmonic Style  - Warm (2nd+3rd), Tight (odd), Full (broadest)
+  Harmonic Tilt   - Roll-off of upper harmonics (0-8 dB/oct)
+  Harmonic Style  - Full (smooth decay ~2kHz, best for bass guitar),
+                    Tight (focused low-mids, drops ~600Hz, kick drum),
+                    Bright (raw NLD, extends to 10kHz+, use sparingly)
 
 Suggested starting point for bass guitar:
-  Frequency: 85Hz, Intensity: 45%, Original Bass: 75%, Harmonics Mix: 55%,
-  Tilt: 4dB, Style: Warm]]></description>
-        <link rel="website">https://github.com/stevewcox/psychobass</link>
+  Frequency: 85Hz, Intensity: 55%, Original Bass: 75%, Harmonics Mix: 60%,
+  Tilt: 4dB, Style: Full]]></description>
+        <link rel="website">https://github.com/stevewcox/SteveCoxJSFX</link>
       </metadata>
-      <version name="1.0.2" author="Steve Cox" time="2026-03-09T01:14:00Z">
-        <changelog><![CDATA[Psycho-acoustic bass enhancer.
+      <version name="1.1.4" author="Steve Cox / PsychoBass Contributors" time="2025-01-01T00:00:00Z">
+        <changelog><![CDATA[v1.1.4 - Harmonic Style labels corrected to match measured behaviour:
+  Full (smooth decay ~2kHz), Tight (focused, drops ~600Hz), Bright (extended to 10kHz+)
 
-- Feedback-multiplier NLD with exponential soft-clip
-- 4th-order Butterworth crossover
-- Timbre-matched envelope compander
-- Harmonic high-pass at 1.5x crossover (eliminates comb-filter notches)
-- Spectral tilt high-shelf cut (0-6 dB/oct)
-- Three harmonic styles: Warm, Tight, Full
-- Stereo processing
-- Output gain: -24dB to +10dB]]></changelog>
-        <source main="effect">https://github.com/stevewcox/psychobass/raw/main/Effects/PsychoBass.jsfx</source>
+v1.1.x - Major architecture revision:
+  - NLD pre-gain normalisation for consistent drive at any input level
+  - Compander redesigned: harmonics now scale with envelope rather than being suppressed
+  - Two-shelf spectral envelope replaces single tilt shelf
+  - Harmonic HP reduced to 2nd order to preserve 2nd harmonic energy
+  - Output Gain default changed to 0dB
+  - Tilt range extended to 8 dB/oct]]></changelog>
+        <source main="effect">https://github.com/stevewcox/SteveCoxJSFX/raw/main/Effects/PsychoBass.jsfx</source>
       </version>
     </reapack>
   </category>

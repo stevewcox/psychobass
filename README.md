@@ -18,14 +18,14 @@ The challenge is generating those harmonics in a way that sounds like the origin
 
 ## Features
 
-- **Timbre-matched harmonic generation** — harmonics follow the envelope and dynamics of the original signal, so the added content sounds like part of the instrument
-- **Feedback-multiplier nonlinear device (NLD)** — generates a musical harmonic series favouring 2nd and 3rd harmonics (similar to tube saturation), rather than harsh odd-only or buzzy distortion
+- **Timbre-matched harmonic generation** — the NLD is driven at a normalised level then re-scaled by the signal envelope, so harmonics track the instrument's dynamics naturally rather than sitting at a fixed level
+- **Feedback-multiplier nonlinear device (NLD)** — generates a rich harmonic series with strong 2nd and 3rd harmonics, similar to asymmetric tube saturation, avoiding the harsh character of simple clipping or rectification
 - **Phase-cancellation-free architecture** — the harmonic path is high-passed at 1.5× the crossover frequency, ensuring no frequency overlap between the direct bass signal and the NLD output (eliminates comb-filter notches)
-- **Spectral tilt control** — smoothly rolls off upper harmonics so the series decays naturally, like a real acoustic instrument, rather than sitting at equal amplitude
-- **Three harmonic styles** — Warm (2nd+3rd dominant), Tight (odd harmonics), Full (broadest series)
-- **4th-order Butterworth crossover** — clean separation of bass band from the rest of the signal
+- **Two-shelf spectral envelope** — a low-shelf boost lifts the 2nd–4th harmonic peak region, while a high-shelf cut rolls off the upper series smoothly, matching the harmonic decay shape of a natural instrument
+- **Three harmonic styles** — Full (smooth decay to ~2kHz), Tight (focused low-mids, drops off ~600Hz), Bright (extended series to 10kHz+)
+- **4th-order Butterworth crossover** — clean separation of the bass band from the rest of the signal
 - **Independent Original Bass control** — reduce the fundamental to let the harmonics carry more of the perceived weight on small speakers
-- **Output gain** — ±24dB / +10dB trim to compensate for level changes
+- **Output gain** — -24dB to +10dB trim
 
 ---
 
@@ -38,7 +38,7 @@ The challenge is generating those harmonics in a way that sounds like the origin
 1. In Reaper, go to **Extensions → ReaPack → Import a repository**
 2. Paste this URL:
    ```
-   https://github.com/stevewcox/psychobass/raw/main/index.xml
+   https://github.com/stevewcox/SteveCoxJSFX/raw/main/index.xml
    ```
 3. Click **OK**, then **Extensions → ReaPack → Browse packages**
 4. Find **PsychoBass** and click **Install**
@@ -64,31 +64,31 @@ No compilation or dependencies required.
 | Slider | Range | Default | Description |
 |---|---|---|---|
 | **Frequency** | 40–200 Hz | 80 Hz | Crossover point. Set just above the fundamental of your lowest note. Bass guitar: 80–100Hz. Kick drum: 60–80Hz. |
-| **Intensity** | 0–100% | 50% | How strongly harmonics are generated. Start around 40–60% and increase to taste. |
+| **Intensity** | 0–100% | 60% | How strongly harmonics are generated. Start around 50–65% and increase to taste. |
 | **Original Bass** | 0–100% | 70% | Level of the original sub-bass in the output. Reducing this lets the harmonics carry more of the perceived bass on small speakers. |
-| **Harmonics Mix** | 0–100% | 50% | Blend of the generated harmonics into the output. |
-| **Output Gain** | -24 to +10 dB | 0 dB | Output trim. The default -6dB compensates for the level increase from added harmonics. |
-| **Harmonic Tilt** | 0–6 dB/oct | 4 dB/oct | How steeply the upper harmonics roll off. Higher values give a more natural, instrument-like decay of the harmonic series. 0 = flat (all harmonics equal level). |
-| **Harmonic Style** | — | Warm | **Warm**: 2nd and 3rd harmonic dominant — suits bass guitar and upright bass. **Tight**: odd harmonics — punchy and modern. **Full**: broadest harmonic series — suits synth bass and kick. |
+| **Harmonics Mix** | 0–100% | 65% | Blend of the generated harmonics into the output. |
+| **Output Gain** | -24 to +10 dB | 0 dB | Output trim. |
+| **Harmonic Tilt** | 0–8 dB/oct | 4 dB/oct | Depth of the high-shelf cut on the harmonic path. Higher values roll off the upper series more steeply. 0 = flat. |
+| **Harmonic Style** | — | Full | **Full**: smooth decay to ~2kHz, closest to character of a well-known alternative — best for bass guitar and upright bass. **Tight**: LP filtered, drops off ~600Hz, focused low-mids — suits kick drum. **Bright**: raw NLD output, extends to 10kHz+, use sparingly. |
 
 ---
 
 ## Suggested Starting Points
 
 **Bass guitar (finger style)**
-Frequency: 85Hz · Intensity: 45% · Original Bass: 75% · Harmonics Mix: 55% · Tilt: 4dB · Style: Warm
+Frequency: 85Hz · Intensity: 55% · Original Bass: 75% · Harmonics Mix: 60% · Tilt: 4dB · Style: Full
 
 **Bass guitar (pick / aggressive)**
-Frequency: 90Hz · Intensity: 55% · Original Bass: 65% · Harmonics Mix: 60% · Tilt: 3dB · Style: Tight
+Frequency: 90Hz · Intensity: 60% · Original Bass: 65% · Harmonics Mix: 65% · Tilt: 3dB · Style: Full
 
 **Upright / acoustic bass**
-Frequency: 80Hz · Intensity: 35% · Original Bass: 80% · Harmonics Mix: 45% · Tilt: 5dB · Style: Warm
+Frequency: 80Hz · Intensity: 45% · Original Bass: 80% · Harmonics Mix: 50% · Tilt: 5dB · Style: Full
 
 **Synth bass**
-Frequency: 70Hz · Intensity: 60% · Original Bass: 60% · Harmonics Mix: 65% · Tilt: 2dB · Style: Full
+Frequency: 70Hz · Intensity: 60% · Original Bass: 60% · Harmonics Mix: 65% · Tilt: 2dB · Style: Bright
 
 **Kick drum**
-Frequency: 65Hz · Intensity: 50% · Original Bass: 70% · Harmonics Mix: 50% · Tilt: 3dB · Style: Tight
+Frequency: 65Hz · Intensity: 50% · Original Bass: 70% · Harmonics Mix: 50% · Tilt: 4dB · Style: Tight
 
 ---
 
@@ -105,17 +105,21 @@ Input
          │                                                       │
          ├── Envelope follower                                   │
          │                                                       │
+         ├── Normalise to NLD drive level                        │
+         │   (envelope-referenced pre-gain)                      │
+         │                                                       │
          └── Feedback-multiplier NLD                             │
                │                                                 │
                ├── Harmonic style blend                          │
                │                                                 │
-               ├── Timbre-matched compander                      │
-               │   (envelope-referenced gain, attack/release)    │
+               ├── Re-scale by envelope (timbre matching)        │
+               │   smoothed by attack/release compander          │
                │                                                 │
-               ├── 4th-order HP at 1.5× crossover freq          │
+               ├── 2nd-order HP at 1.5× crossover freq          │
                │   (removes overlap with fundamental)            │
                │                                                 │
-               └── Spectral tilt (high-shelf cut)                │
+               └── Two-shelf spectral envelope                   │
+                   (low-shelf boost + high-shelf tilt cut)       │
                      │                                           │
                      └────── Mix ──────────────────────────────┘
                                 │
@@ -124,11 +128,13 @@ Input
                              Output
 ```
 
-**Timbre matching** is the most important element for natural sound. Rather than adding harmonics at a fixed level, the plugin continuously measures the envelope of the bass band and adjusts the harmonic amplitude to follow it. This means attack transients, sustain, and decay all retain the character of the original instrument. Without this, heavily processed bass takes on a synthetic quality.
+**Normalised NLD drive** is the key to consistent harmonic generation at any input level. The bass band signal is scaled to a fixed drive level before the nonlinearity, so the NLD always generates a full harmonic series regardless of whether the input is loud or quiet. The envelope is then multiplied back in after the NLD, restoring correct dynamics. This is what gives the plugin its compressed, saturated character at moderate settings.
 
-**Phase cancellation suppression** addresses a common problem in naive implementations: when the NLD output contains energy at the same frequencies as the direct signal, any phase difference between them causes comb-filter notches — visible as regular dips in the spectrum and audible as a hollow, electronic character. By high-passing the harmonic output at 1.5× the crossover frequency, the two paths occupy entirely separate frequency ranges and cannot interfere.
+**Timbre matching** ensures the harmonics track the instrument's natural dynamics. The re-scaling compander uses separate attack and release times so it follows transients without pumping, preserving the instrument's articulation even at high Intensity settings.
 
-**Spectral tilt** shapes the harmonic series so it decays with frequency, matching the behaviour of real plucked and bowed strings. A flat harmonic series (equal amplitude at every harmonic) looks stepped on a spectrum analyser and sounds unnatural; a tilted series is perceptually smoother and blends with the original instrument more convincingly.
+**Phase cancellation suppression** addresses a common problem in naive implementations: when the NLD output contains energy at the same frequencies as the direct signal, any phase difference causes comb-filter notches — visible as regular dips in the spectrum and audible as a hollow, electronic character. By high-passing the harmonic output at 1.5× the crossover frequency, the two paths occupy entirely separate frequency ranges and cannot interfere.
+
+**Two-shelf spectral envelope** shapes the harmonic series to match the decay curve of a natural instrument. A low-shelf boost lifts the 2nd–4th harmonic region (the perceptual "body" of the bass on small speakers), and a high-shelf cut rolls off the upper series at a rate set by the Harmonic Tilt slider. Together these produce a smooth downward envelope peaking at the 3rd–4th harmonic, rather than a flat or stepped series.
 
 ---
 
