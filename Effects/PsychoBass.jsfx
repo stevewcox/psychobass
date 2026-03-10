@@ -4,7 +4,7 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //              speakers and earbuds, without the synthetic character of naive harmonic
 //              generators. Based on published Virtual Bass System research.
 // @version 1.1.5
-// @author Steve Cox / PsychoBass Contributors
+// @author stevewcox (Steve Cox / PsychoBass Contributors)
 // @license MIT
 // @provides
 //   [effect] Effects/PsychoBass.jsfx
