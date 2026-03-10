@@ -36,8 +36,8 @@ Suggested starting point for bass guitar:
   Tilt: 4dB, Style: Full]]></description>
         <link rel="website">https://github.com/stevewcox/SteveCoxJSFX</link>
       </metadata>
-      <version name="1.1.4" author="Steve Cox / PsychoBass Contributors" time="2025-01-01T00:00:00Z">
-        <changelog><![CDATA[v1.1.4 - Harmonic Style labels corrected to match measured behaviour:
+      <version name="1.1.5" author="stevewcox" time="2026-03-10T01:00:00Z">
+        <changelog><![CDATA[v1.1.4 & v1.1.5 - Harmonic Style labels corrected to match measured behaviour:
   Full (smooth decay ~2kHz), Tight (focused, drops ~600Hz), Bright (extended to 10kHz+)
 
 v1.1.x - Major architecture revision:

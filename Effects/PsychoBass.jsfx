@@ -3,7 +3,7 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //              Adds upper harmonics to bass signals so they remain audible on small
 //              speakers and earbuds, without the synthetic character of naive harmonic
 //              generators. Based on published Virtual Bass System research.
-// @version 1.1.4
+// @version 1.1.5
 // @author Steve Cox / PsychoBass Contributors
 // @license MIT
 // @provides
@@ -22,19 +22,19 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //   Mu, Gan & Tan, ICASSP 2013 (timbre matching)
 //   Oo & Gan (harmonic/IMD analysis of NLDs)
 //
-// v1.1.0 changes (informed by spectrum analysis vs R-Bass):
+// v1.1.0 changes (informed by spectrum analysis vs alternative product):
 //   - NLD now driven with pre-gain before nonlinearity so harmonics
 //     activate properly at typical mix levels (-18 to -6 dBFS)
 //   - Compander role changed: no longer normalises harmonics DOWN to
 //     envelope level. Instead acts as a character-follower only,
 //     preserving dynamics without suppressing harmonic output level
 //   - All three styles now use the Full-mode NLD as their base
-//     (spectrum analysis showed Full was closest to R-Bass in level)
+//     (spectrum analysis showed Full was closest to alternative in level)
 //     with style blending applied AFTER the NLD, not before
 //   - Spectral envelope shaping replaced with a two-shelf cascade:
 //     * Low shelf: gentle boost around 2nd-4th harmonics (peak region)
 //     * High shelf: -9dB/oct equivalent roll-off above ~500Hz
-//     This matches the R-Bass harmonic envelope shape observed in analysis
+//     This matches the alternative's harmonic envelope shape observed in analysis
 //   - Harmonic HP reduced to 2nd-order (was 4th) to preserve more
 //     energy in the 2nd harmonic after the crossover skirt
 //   - Output scaling factor raised from 0.5 to 1.0
@@ -174,20 +174,20 @@ srate==last_srate && freq==last_freq && tilt_db==last_tilt ? 0 : (
   bq_hp(bq_mem+ 8*9, hpf_freq, srate);
   bq_hp(bq_mem+ 9*9, hpf_freq, srate);
 
-  // Spectral envelope shaping — two-shelf cascade to match R-Bass curve:
+  // Spectral envelope shaping — two-shelf cascade to match alternative's curve:
   //
   // Shelf 1 (low shelf BOOST): gentle +3dB boost centred at 4x crossover
   //   (320Hz at 80Hz). This lifts the 3rd-5th harmonic region which is
   //   the perceptual "body" of the bass on small speakers, matching the
-  //   R-Bass peak observed at ~220Hz in the spectrum analysis.
+  //   alternative's peak observed at ~220Hz in the spectrum analysis.
   //
   // Shelf 2 (high shelf CUT): tilt_db cut above 6x crossover (480Hz at
   //   80Hz). The tilt slider controls depth. At default 4dB/oct this
-  //   gives ~-9dB at 1kHz, ~-15dB at 2kHz — matching the R-Bass roll-off
+  //   gives ~-9dB at 1kHz, ~-15dB at 2kHz — matching the alternative's roll-off
   //   slope measured from the spectrum screenshots.
   //
   // Together these give: flat below 200Hz → peak at 220-330Hz → smooth
-  // -9dB/oct decay above 500Hz → gone by 3kHz. Matches R-Bass envelope.
+  // -9dB/oct decay above 500Hz → gone by 3kHz. Matches alternative's envelope.
 
   ls_gain  = 10^(3.0/20);          // +3dB low-shelf boost
   ls_freq  = freq * 4.0;           // shelf centre at 4x crossover
@@ -241,7 +241,7 @@ env_R = abs_R>env_R ? env_R*env_attack  + (1-env_attack) *abs_R
 // Drive signal up before the nonlinearity so harmonics activate at
 // typical mix levels. The pre-gain is normalised by the envelope so
 // the NLD always sees a consistent drive level regardless of input
-// level — this is what gives the "compressed" character of R-Bass.
+// level — this is what gives the "compressed" character of alternative.
 // The harmonic output is then returned to the correct level by
 // multiplying by the envelope afterwards (timbre matching).
 //
@@ -278,13 +278,13 @@ nld_R = feedback_nld(drive_R);
 
 // ---- 4. Harmonic style blending ----
 // Full:   NLD blended with full-wave rectification — rich series with smooth
-//         decay to ~2kHz, closest to R-Bass character. Best for bass guitar.
+//         decay to ~2kHz, closest to alternative's character. Best for bass guitar.
 // Tight:  LP filtered at 4.5x crossover — short series, focused low-mids,
 //         drops off after ~600Hz. Punchy and defined.
 // Bright: raw NLD output — very extended series to 10kHz+, maximum harmonic
 //         content. Use sparingly; best for synth bass or kick drum.
 
-style==0 ? (  // Full — smooth decay series, best R-Bass match
+style==0 ? (  // Full — smooth decay series, best alternative product match
   harm_L = nld_L;
   harm_R = nld_R;
 ) : style==1 ? (  // Tight — LP filtered, short focused series
