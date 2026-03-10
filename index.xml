@@ -36,9 +36,8 @@ Suggested starting point for bass guitar:
   Tilt: 4dB, Style: Full]]></description>
         <link rel="website">https://github.com/stevewcox/SteveCoxJSFX</link>
       </metadata>
-      <version name="0.2.5" author="stevewcox" time="2026-03-10T01:00:00Z">
-        <changelog><![CDATA[v0.2.4 & v0.2.5 - Harmonic Style labels corrected to match measured behaviour:
-  Full (smooth decay ~2kHz), Tight (focused, drops ~600Hz), Bright (extended to 10kHz+)
+      <version name="0.2.6" author="stevewcox" time="2026-03-10T01:00:00Z">
+        <changelog><![CDATA[v0.2.6 
 
 v0.2.x - Major architecture revision:
   - NLD pre-gain normalisation for consistent drive at any input level

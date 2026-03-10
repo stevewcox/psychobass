@@ -26,6 +26,9 @@ jobs:
         with:
           ruby-version: '3.2'
 
+      - name: Install pandoc
+        uses: pandoc/actions/setup@v1
+
       - name: Install reapack-index
         run: gem install reapack-index
 

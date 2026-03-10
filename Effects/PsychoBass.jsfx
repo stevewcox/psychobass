@@ -3,7 +3,7 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //              Adds upper harmonics to bass signals so they remain audible on small
 //              speakers and earbuds, without the synthetic character of naive harmonic
 //              generators. Based on published Virtual Bass System research.
-// @version 0.2.5
+// @version 0.2.6
 // @author stevewcox (Steve Cox / PsychoBass Contributors)
 // @license MIT
 // @provides

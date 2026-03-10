@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.6] - 2026-03-11
+
+### Fixed
+- **Pandoc added to reapack-index** to fix RTF warnings
+
 ## [0.2.5] - 2026-03-10
 
 ### Changed
