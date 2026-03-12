@@ -5,6 +5,40 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.9] - 2026-03-12
+
+### Fixed
+- **Output Gain applied during bypass**: `out_gain` was multiplied after the
+  dry/wet crossfade, so it scaled the dry signal too. Moved inside the wet
+  path so the bypassed signal always passes at unity gain.
+
+## [0.2.8] - 2026-03-12
+
+### Added
+- **Bypass slider** (slider8, default: Active): an automatable in-plugin bypass
+  with a ~30ms dry/wet crossfade, giving click-free enable/disable that works
+  reliably regardless of Reaper's host bypass mechanism. Set to **Bypassed** to
+  pass the signal through unprocessed; set to **Active** to engage the plugin.
+  Can be automated on any track for dynamic bypass during a project.
+
+## [0.2.7] - 2026-03-12
+
+### Fixed
+- **Loud thump on unmute / after silence**: the envelope follower was decaying
+  to near-zero during silence, causing the pre-gain normalisation to amplify
+  the first incoming samples by up to 5000x before the soft-clip could limit
+  them. Fixed by:
+  1. Raising the `safe_env` floor from `0.0001` to `0.01` (-40dBFS), limiting
+     maximum pre-gain to 50x rather than 5000x
+  2. Adding a 200ms hold stage to the envelope follower so it does not begin
+     releasing until signal has been absent for 200ms — prevents the floor
+     being reached during normal gaps between notes
+  3. Initialising the compander state to the floor value rather than `1.0`,
+     preventing a gain spike on first audio after plugin load or silence
+- **Click on plugin enable/disable**: implemented soft bypass via Reaper's
+  `bypass` variable with a ~10ms crossfade (superseded in v0.2.8 by the
+  dedicated Bypass slider, which is more reliable across Reaper configurations)
+
 ## [0.2.6] - 2026-03-11
 
 ### Fixed

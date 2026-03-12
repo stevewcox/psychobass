@@ -3,7 +3,7 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //              Adds upper harmonics to bass signals so they remain audible on small
 //              speakers and earbuds, without the synthetic character of naive harmonic
 //              generators. Based on published Virtual Bass System research.
-// @version 0.2.6
+// @version 0.2.9
 // @author stevewcox (Steve Cox / PsychoBass Contributors)
 // @license MIT
 // @provides
@@ -39,6 +39,20 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //     energy in the 2nd harmonic after the crossover skirt
 //   - Output scaling factor raised from 0.5 to 1.0
 //   - Default Intensity raised to 60%, Harmonics Mix to 65%
+//
+// v0.2.7 changes:
+//   - Fixed loud thump on unmute / after silence: envelope follower now has
+//     a 200ms hold stage and safe_env floor raised from 0.0001 to 0.01,
+//     limiting maximum pre-gain to 50x rather than 5000x
+//   - Compander initialised to floor value (0.01) rather than 1.0, preventing
+//     a gain spike on first audio after plugin load or silence
+//   - Implemented soft bypass via Reaper's bypass variable (fades over ~10ms)
+//
+// v0.2.8 changes:
+//   - Added Bypass slider (slider8): an automatable in-plugin bypass with a
+//     ~30ms crossfade between dry and wet, giving click-free enable/disable
+//     that works regardless of Reaper's host bypass mechanism.
+//     Replaces reliance on the bypass variable approach from v0.2.7.
 
 slider1:80<40,200,1>Frequency (Hz)
 slider2:60<0,100,1>Intensity (%)
@@ -47,6 +61,7 @@ slider4:65<0,100,1>Harmonics Mix (%)
 slider5:0<-24,10,0.5>Output Gain (dB)
 slider6:4<0,8,0.5>Harmonic Tilt (dB/oct)
 slider7:0<0,2,1{Full (smooth decay),Tight (focused low-mids),Bright (extended series)}>Harmonic Style
+slider8:1<0,1,1{Bypassed,Active}>Bypass
 
 @init
 
@@ -60,7 +75,7 @@ slider7:0<0,2,1{Full (smooth decay),Tight (focused low-mids),Bright (extended se
 //  8,9   HPH L/R         harmonic HP at 1.5x crossover (2nd order)
 //  10,11 Tilt1 L/R       low-shelf boost on harmonic path (peak region)
 //  12,13 Tilt2 L/R       high-shelf cut on harmonic path (roll-off)
-//  14,15 WarmLP L/R      Warm mode: LP to accentuate 2nd+3rd over higher harmonics
+//  14,15 TightLP L/R     Tight mode: LP to accentuate 2nd+3rd over higher harmonics
 
 function bq_lp(mem_base, freq, srate)
   local(w0,cos_w0,sin_w0,alpha,b0,b1,b2,a0,a1,a2)
@@ -135,20 +150,37 @@ bq_mem=0;
 env_L=0; env_R=0;
 env_attack=0; env_release=0;
 
-hcmp_L=1; hcmp_R=1;
+// Envelope hold: prevents the envelope decaying to the floor during
+// short silences (gaps between notes), which would cause a loud thump
+// when the next note arrives due to extreme pre-gain.
+env_hold_L=0; env_hold_R=0;
+env_hold_samples=0;  // set in @block from srate
+
+// Initialise compander to floor value, not 1.0, so first audio after
+// silence doesn't cause a gain spike before the compander catches up.
+env_floor = 0.01;
+hcmp_L=env_floor; hcmp_R=env_floor;
 hcmp_atk=0; hcmp_rel=0;
 
 last_freq=-1; last_srate=-1; last_tilt=-1;
 
+// In-plugin bypass: bypass_gain is the smoothed version of bypass_target
+// (slider8). It fades over ~30ms so toggling the slider — or automating
+// it — never causes a click, regardless of Reaper's host bypass mechanism.
+// Initialise to 1.0 (active) matching the slider8 default of 1.
+bypass_gain = 1.0;
+bypass_coeff = 0;  // smoothing coefficient, set in @block
+
 @slider
 
-freq      = slider1;
-intensity = slider2 * 0.01;
-orig_bass = slider3 * 0.01;
-harm_mix  = slider4 * 0.01;
-out_gain  = 10^(slider5/20);
-tilt_db   = slider6;
-style     = slider7;
+freq          = slider1;
+intensity     = slider2 * 0.01;
+orig_bass     = slider3 * 0.01;
+harm_mix      = slider4 * 0.01;
+out_gain      = 10^(slider5/20);
+tilt_db       = slider6;
+style         = slider7;
+bypass_target = slider8;  // 0 = bypassed, 1 = active
 
 @block
 
@@ -199,22 +231,30 @@ srate==last_srate && freq==last_freq && tilt_db==last_tilt ? 0 : (
   bq_hs(bq_mem+12*9, hs_freq, hs_gain, srate);
   bq_hs(bq_mem+13*9, hs_freq, hs_gain, srate);
 
-  // Warm mode low-pass: cuts harmonics above ~4x crossover frequency.
-  // At 80Hz crossover this = 320Hz, which is between the 4th harmonic
+  // Tight mode low-pass: cuts harmonics above ~4.5x crossover frequency.
+  // At 80Hz crossover this = 360Hz, which is between the 4th harmonic
   // (220Hz, passes) and the 5th (275Hz, attenuated) and 6th (330Hz, cut).
-  // This gives Warm a distinctly different character from Tight/Full —
+  // This gives Tight a distinctly different character from Full —
   // rounder, more 2nd/3rd dominant, less upper harmonic brightness.
-  warm_lp_freq = freq * 4.5;
-  bq_lp(bq_mem+14*9, warm_lp_freq, srate);
-  bq_lp(bq_mem+15*9, warm_lp_freq, srate);
+  tight_lp_freq = freq * 4.5;
+  bq_lp(bq_mem+14*9, tight_lp_freq, srate);
+  bq_lp(bq_mem+15*9, tight_lp_freq, srate);
 
   // Envelope follower: ~10ms attack, ~150ms release
   env_attack  = exp(-1.0/(srate*0.010));
   env_release = exp(-1.0/(srate*0.150));
 
+  // Hold time: ~200ms. Envelope won't start releasing until signal has
+  // been absent for this long, preventing pre-gain spikes on note gaps.
+  env_hold_samples = srate * 0.200;
+
   // Harmonic compander timing: ~30ms attack, ~250ms release
   hcmp_atk = exp(-1.0/(srate*0.030));
   hcmp_rel = exp(-1.0/(srate*0.250));
+
+  // Bypass crossfade: ~30ms fade — long enough to be click-free,
+  // short enough to feel responsive when toggling manually.
+  bypass_coeff = exp(-1.0/(srate*0.030));
 );
 
 @sample
@@ -230,12 +270,36 @@ high_L = bq_process(bq_mem+6*9, high_L);
 high_R = bq_process(bq_mem+5*9, spl1);
 high_R = bq_process(bq_mem+7*9, high_R);
 
-// ---- 2. Envelope follower (on bass band) ----
+// ---- 2. Envelope follower with hold (on bass band) ----
+// Attack/release follower with a hold stage between them.
+// The hold prevents the envelope decaying to the floor during short
+// silences (gaps between notes), which would cause extreme pre-gain
+// and a loud thump when the next note arrives.
 abs_L=abs(bass_L); abs_R=abs(bass_R);
-env_L = abs_L>env_L ? env_L*env_attack  + (1-env_attack) *abs_L
-                    : env_L*env_release + (1-env_release)*abs_L;
-env_R = abs_R>env_R ? env_R*env_attack  + (1-env_attack) *abs_R
-                    : env_R*env_release + (1-env_release)*abs_R;
+
+// Left channel
+abs_L > env_L ? (
+  env_L = env_L*env_attack + (1-env_attack)*abs_L;
+  env_hold_L = env_hold_samples;  // reset hold counter on signal
+) : (
+  env_hold_L > 0 ? (
+    env_hold_L -= 1;              // hold: don't release yet
+  ) : (
+    env_L = env_L*env_release + (1-env_release)*abs_L;
+  );
+);
+
+// Right channel
+abs_R > env_R ? (
+  env_R = env_R*env_attack + (1-env_attack)*abs_R;
+  env_hold_R = env_hold_samples;
+) : (
+  env_hold_R > 0 ? (
+    env_hold_R -= 1;
+  ) : (
+    env_R = env_R*env_release + (1-env_release)*abs_R;
+  );
+);
 
 // ---- 3. Pre-gain + NLD ----
 // Drive signal up before the nonlinearity so harmonics activate at
@@ -245,13 +309,12 @@ env_R = abs_R>env_R ? env_R*env_attack  + (1-env_attack) *abs_R
 // The harmonic output is then returned to the correct level by
 // multiplying by the envelope afterwards (timbre matching).
 //
-// At low input levels: pre-gain is high, NLD saturates gently,
-//   output is scaled back down by small envelope — quiet but present.
-// At high input levels: pre-gain is lower, NLD saturates harder,
-//   output is scaled up by large envelope — loud and rich.
+// The floor of 0.01 (-40dBFS equivalent) limits maximum pre-gain to
+// 0.5/0.01 = 50x, preventing extreme gain spikes after silence.
+// Previously 0.0001 gave up to 5000x gain — the cause of the thump.
 
-safe_env_L = max(env_L, 0.0001);
-safe_env_R = max(env_R, 0.0001);
+safe_env_L = max(env_L, 0.01);
+safe_env_R = max(env_R, 0.01);
 
 // Target drive level into NLD: normalise bass to ~0.5 RMS equivalent
 nld_drive = 0.5;
@@ -277,12 +340,12 @@ nld_L = feedback_nld(drive_L);
 nld_R = feedback_nld(drive_R);
 
 // ---- 4. Harmonic style blending ----
-// Full:   NLD blended with full-wave rectification — rich series with smooth
-//         decay to ~2kHz, closest to alternative's character. Best for bass guitar.
+// Full:   raw NLD output — rich series, closest to alternative's character.
+//         Best for bass guitar.
 // Tight:  LP filtered at 4.5x crossover — short series, focused low-mids,
 //         drops off after ~600Hz. Punchy and defined.
-// Bright: raw NLD output — very extended series to 10kHz+, maximum harmonic
-//         content. Use sparingly; best for synth bass or kick drum.
+// Bright: NLD blended with full-wave rectification — very extended series
+//         to 10kHz+. Use sparingly; best for synth bass or kick drum.
 
 style==0 ? (  // Full — smooth decay series, best alternative product match
   harm_L = nld_L;
@@ -290,7 +353,7 @@ style==0 ? (  // Full — smooth decay series, best alternative product match
 ) : style==1 ? (  // Tight — LP filtered, short focused series
   harm_L = bq_process(bq_mem+14*9, nld_L);
   harm_R = bq_process(bq_mem+15*9, nld_R);
-) : (  // Bright — raw NLD, extended series to 10kHz+
+) : (  // Bright — rectified blend, extended series to 10kHz+
   harm_L = nld_L*0.5 + abs(nld_L)*0.5;
   harm_R = nld_R*0.5 + abs(nld_R)*0.5;
 );
@@ -330,9 +393,19 @@ harm_R = bq_process(bq_mem+11*9, harm_R);
 harm_L = bq_process(bq_mem+12*9, harm_L);
 harm_R = bq_process(bq_mem+13*9, harm_R);
 
-// ---- 8. Sum ----
-spl0 = high_L + bass_L*orig_bass + harm_L*harm_mix;
-spl1 = high_R + bass_R*orig_bass + harm_R*harm_mix;
+// ---- 8. Bypass crossfade + sum ----
+// bypass_gain smoothly tracks bypass_target (slider8) via a ~30ms
+// exponential fade. Toggling or automating the slider is always
+// click-free regardless of Reaper's host bypass mechanism.
+//
+// bypass_gain == 1: fully active   (wet signal)
+// bypass_gain == 0: fully bypassed (dry signal passthrough)
 
-spl0 *= out_gain;
-spl1 *= out_gain;
+bypass_gain = bypass_gain*bypass_coeff + bypass_target*(1.0 - bypass_coeff);
+
+// out_gain applied to wet path only, so bypassed signal passes at unity
+wet_L = (high_L + bass_L*orig_bass + harm_L*harm_mix) * out_gain;
+wet_R = (high_R + bass_R*orig_bass + harm_R*harm_mix) * out_gain;
+
+spl0 = spl0*(1.0 - bypass_gain) + wet_L*bypass_gain;
+spl1 = spl1*(1.0 - bypass_gain) + wet_R*bypass_gain;
