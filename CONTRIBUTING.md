@@ -35,3 +35,5 @@ The plugin is written in JSFX (EEL2). Please keep the same conventions as the ex
 ## Licence
 
 By contributing, you agree that your contributions will be licensed under the same MIT licence as the project.
+
+Steve Cox 2026
