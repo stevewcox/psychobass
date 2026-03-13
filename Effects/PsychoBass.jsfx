@@ -53,6 +53,12 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //     ~30ms crossfade between dry and wet, giving click-free enable/disable
 //     that works regardless of Reaper's host bypass mechanism.
 //     Replaces reliance on the bypass variable approach from v0.2.7.
+//
+// v0.2.9 changes:
+//   - Output Gain applied during bypass**: `out_gain` was multiplied after the
+//     dry/wet crossfade, so it scaled the dry signal too. Moved inside the wet
+//     path so the bypassed signal always passes at unity gain.
+
 
 slider1:80<40,200,1>Frequency (Hz)
 slider2:60<0,100,1>Intensity (%)
