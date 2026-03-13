@@ -36,7 +36,6 @@ jobs:
         run: |
           reapack-index \
             --rebuild \
-            --ignore-unknown \
             --name "SteveCoxJSFX" \
             --link "https://github.com/${{ github.repository }}" \
             --output index.xml
