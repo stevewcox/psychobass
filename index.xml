@@ -30,6 +30,7 @@ Controls:
   Harmonic Style  - Full (smooth decay ~2kHz, best for bass guitar),
                     Tight (focused low-mids, drops ~600Hz, kick drum),
                     Bright (raw NLD, extends to 10kHz+, use sparingly)
+  Bypass           - Toggle effect on/off
 
 Suggested starting point for bass guitar:
   Frequency: 85Hz, Intensity: 55%, Original Bass: 75%, Harmonics Mix: 60%,
@@ -37,7 +38,7 @@ Suggested starting point for bass guitar:
         <link rel="website">https://github.com/stevewcox/SteveCoxJSFX</link>
       </metadata>
       <version name="0.2.6" author="stevewcox" time="2026-03-10T01:00:00Z">
-        <changelog><![CDATA[v0.2.6 
+        <changelog><![CDATA[v0.2.9 
 
 v0.2.x - Major architecture revision:
   - NLD pre-gain normalisation for consistent drive at any input level
