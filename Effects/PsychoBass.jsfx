@@ -3,7 +3,7 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //              Adds upper harmonics to bass signals so they remain audible on small
 //              speakers and earbuds, without the synthetic character of naive harmonic
 //              generators. Based on published Virtual Bass System research.
-// @version 0.2.9
+// @version 0.4.12
 // @author stevewcox (Steve Cox / PsychoBass Contributors)
 // @license MIT
 // @provides
@@ -22,47 +22,39 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //   Mu, Gan & Tan, ICASSP 2013 (timbre matching)
 //   Oo & Gan (harmonic/IMD analysis of NLDs)
 //
-// v0.2.0 changes (informed by spectrum analysis vs alternative product):
-//   - NLD now driven with pre-gain before nonlinearity so harmonics
-//     activate properly at typical mix levels (-18 to -6 dBFS)
-//   - Compander role changed: no longer normalises harmonics DOWN to
-//     envelope level. Instead acts as a character-follower only,
-//     preserving dynamics without suppressing harmonic output level
-//   - All three styles now use the Full-mode NLD as their base
-//     (spectrum analysis showed Full was closest to alternative in level)
-//     with style blending applied AFTER the NLD, not before
-//   - Spectral envelope shaping replaced with a two-shelf cascade:
-//     * Low shelf: gentle boost around 2nd-4th harmonics (peak region)
-//     * High shelf: -9dB/oct equivalent roll-off above ~500Hz
-//     This matches the alternative's harmonic envelope shape observed in analysis
-//   - Harmonic HP reduced to 2nd-order (was 4th) to preserve more
-//     energy in the 2nd harmonic after the crossover skirt
-//   - Output scaling factor raised from 0.5 to 1.0
-//   - Default Intensity raised to 60%, Harmonics Mix to 65%
+// Signal architecture (v0.3.x series):
+//   - Bandpass detection path (LP at 2×freq, HP at 0.5×freq) isolates the
+//     bass fundamental before the NLD, preventing intermodulation products
+//     from complex signals (chords, double stops).
+//   - Separate output crossover: HP path (mids/highs) passes through at full
+//     level; LP path (sub-bass) is scaled by Original Bass. Generated harmonics
+//     are added on top via Harmonics Mix. Sub-bass bleed floor of 15% means
+//     Original Bass never goes fully to zero, matching the reference product.
+//   - Harmonic LP (8th-order at 4×freq, -48dB/oct) is applied in Tight mode
+//     only. Full and Bright modes are LP-free — the feedback multiplier NLD
+//     naturally extends harmonics to high frequencies without needing a cap.
 //
-// v0.2.7 changes:
-//   - Fixed loud thump on unmute / after silence: envelope follower now has
-//     a 200ms hold stage and safe_env floor raised from 0.0001 to 0.01,
-//     limiting maximum pre-gain to 50x rather than 5000x
-//   - Compander initialised to floor value (0.01) rather than 1.0, preventing
-//     a gain spike on first audio after plugin load or silence
-//   - Implemented soft bypass via Reaper's bypass variable (fades over ~10ms)
-//
-// v0.2.8 changes:
-//   - Added Bypass slider (slider8): an automatable in-plugin bypass with a
-//     ~30ms crossfade between dry and wet, giving click-free enable/disable
-//     that works regardless of Reaper's host bypass mechanism.
-//     Replaces reliance on the bypass variable approach from v0.2.7.
-//
-// v0.2.9 changes:
-//   - Output Gain applied during bypass**: `out_gain` was multiplied after the
-//     dry/wet crossfade, so it scaled the dry signal too. Moved inside the wet
-//     path so the bypassed signal always passes at unity gain.
-
+// NLD architecture (v0.4.x series):
+//   - Recursive feedback multiplier: y[n] = (x[n] + dc) * (1 + k * |y[n-1]|)
+//     Based on the original MaxxBass architecture (patent US5930373, expired
+//     September 2019; Ben-Tzur & Colloms AES 1999; Larsen & Aarts JAES 2002).
+//     The recursive structure naturally extends harmonics to high frequencies.
+//   - DC bias on input breaks even symmetry of |y[n-1]| so both even and odd
+//     harmonics are generated. DC is removed by the harmonic HP filter.
+//   - DC bias is envelope-scaled (ramps 0→full as env crosses 0→0.1) to
+//     prevent background harmonic generation during silence.
+//   - Soft limiter on feedback state: y/(1+|y|/4) prevents runaway on
+//     transients without hard-clipping the recursive term (which would boost
+//     high-order harmonics and suppress lower ones).
+//   - Feedback state (fmL/fmR) is multiplied by bypass_gain each sample, so it
+//     drains to zero as the plugin fades out and rebuilds from zero on re-engage,
+//     preventing a stale transient state from appearing on bypass toggle.
+//   - Parameters nld_drive, dc, k, harm_cal empirically tuned by spectrum
+//     comparison against the reference product using a 50Hz sine test tone.
 
 slider1:80<40,200,1>Frequency (Hz)
 slider2:60<0,100,1>Intensity (%)
-slider3:70<0,100,1>Original Bass (%)
+slider3:50<0,100,1>Original Bass (%)
 slider4:65<0,100,1>Harmonics Mix (%)
 slider5:0<-24,10,0.5>Output Gain (dB)
 slider6:4<0,8,0.5>Harmonic Tilt (dB/oct)
@@ -73,15 +65,19 @@ slider8:1<0,1,1{Bypassed,Active}>Bypass
 
 // ---- Biquad helpers ----
 // 9 values per filter: [b0 b1 b2 a1 a2 | x1 x2 y1 y2]
-// Filter index map (each * 9):
-//  0,1   LP L/R pass1    crossover LP (4th order cascade)
-//  2,3   LP L/R pass2
-//  4,5   HP L/R pass1    crossover HP (4th order cascade)
-//  6,7   HP L/R pass2
-//  8,9   HPH L/R         harmonic HP at 1.5x crossover (2nd order)
-//  10,11 Tilt1 L/R       low-shelf boost on harmonic path (peak region)
-//  12,13 Tilt2 L/R       high-shelf cut on harmonic path (roll-off)
-//  14,15 TightLP L/R     Tight mode: LP to accentuate 2nd+3rd over higher harmonics
+//
+// Filter index map (each slot * 9):
+//   0, 1  BP-LP L/R pass1   detection bandpass LP (4th order, at 2x freq)
+//   2, 3  BP-LP L/R pass2
+//   4, 5  BP-HP L/R pass1   detection bandpass HP (4th order, at 0.5x freq)
+//   6, 7  BP-HP L/R pass2
+//   8, 9  XLP   L/R pass1   output crossover LP  (4th order, at freq)
+//  10,11  XLP   L/R pass2
+//  12,13  XHP   L/R pass1   output crossover HP  (4th order, at freq)
+//  14,15  XHP   L/R pass2
+//  16,17  HPH   L/R         harmonic HP at 1x freq (2nd order)
+//  18,19  Tilt  L/R         high-shelf cut on harmonic path
+//  20,21  TightLP L/R       Tight mode LP
 
 function bq_lp(mem_base, freq, srate)
   local(w0,cos_w0,sin_w0,alpha,b0,b1,b2,a0,a1,a2)
@@ -105,26 +101,6 @@ function bq_hp(mem_base, freq, srate)
   mem_base[3]=a1/a0; mem_base[4]=a2/a0;
 );
 
-// Low-shelf: boosts/cuts below shelf_freq
-// gain_lin: linear gain at DC
-function bq_ls(mem_base, shelf_freq, gain_lin, srate)
-  local(w0,cos_w0,sin_w0,A,alpha,b0,b1,b2,a0,a1,a2)
-(
-  A=gain_lin;
-  w0=2*$pi*shelf_freq/srate; cos_w0=cos(w0); sin_w0=sin(w0);
-  alpha=sin_w0/2*sqrt((A+1/A)*(1/0.7071-1)+2);
-  b0=    A*((A+1)-(A-1)*cos_w0+2*sqrt(A)*alpha);
-  b1=  2*A*((A-1)-(A+1)*cos_w0);
-  b2=    A*((A+1)-(A-1)*cos_w0-2*sqrt(A)*alpha);
-  a0=       (A+1)+(A-1)*cos_w0+2*sqrt(A)*alpha;
-  a1=   -2*((A-1)+(A+1)*cos_w0);
-  a2=       (A+1)+(A-1)*cos_w0-2*sqrt(A)*alpha;
-  mem_base[0]=b0/a0; mem_base[1]=b1/a0; mem_base[2]=b2/a0;
-  mem_base[3]=a1/a0; mem_base[4]=a2/a0;
-);
-
-// High-shelf: boosts/cuts above shelf_freq
-// gain_lin: linear gain at Nyquist
 function bq_hs(mem_base, shelf_freq, gain_lin, srate)
   local(w0,cos_w0,sin_w0,A,alpha,b0,b1,b2,a0,a1,a2)
 (
@@ -156,26 +132,19 @@ bq_mem=0;
 env_L=0; env_R=0;
 env_attack=0; env_release=0;
 
-// Envelope hold: prevents the envelope decaying to the floor during
-// short silences (gaps between notes), which would cause a loud thump
-// when the next note arrives due to extreme pre-gain.
 env_hold_L=0; env_hold_R=0;
-env_hold_samples=0;  // set in @block from srate
+env_hold_samples=0;
 
-// Initialise compander to floor value, not 1.0, so first audio after
-// silence doesn't cause a gain spike before the compander catches up.
 env_floor = 0.01;
-hcmp_L=env_floor; hcmp_R=env_floor;
-hcmp_atk=0; hcmp_rel=0;
+
+// Feedback multiplier NLD state (one sample delay per channel)
+fmL = 0;
+fmR = 0;
 
 last_freq=-1; last_srate=-1; last_tilt=-1;
 
-// In-plugin bypass: bypass_gain is the smoothed version of bypass_target
-// (slider8). It fades over ~30ms so toggling the slider — or automating
-// it — never causes a click, regardless of Reaper's host bypass mechanism.
-// Initialise to 1.0 (active) matching the slider8 default of 1.
 bypass_gain = 1.0;
-bypass_coeff = 0;  // smoothing coefficient, set in @block
+bypass_coeff = 0;
 
 @slider
 
@@ -186,116 +155,125 @@ harm_mix      = slider4 * 0.01;
 out_gain      = 10^(slider5/20);
 tilt_db       = slider6;
 style         = slider7;
-bypass_target = slider8;  // 0 = bypassed, 1 = active
+bypass_target = slider8;
 
 @block
 
 srate==last_srate && freq==last_freq && tilt_db==last_tilt ? 0 : (
   last_freq=freq; last_srate=srate; last_tilt=tilt_db;
 
-  // 4th-order LP crossover
-  bq_lp(bq_mem+ 0*9, freq, srate);
-  bq_lp(bq_mem+ 1*9, freq, srate);
-  bq_lp(bq_mem+ 2*9, freq, srate);
-  bq_lp(bq_mem+ 3*9, freq, srate);
+  // Detection bandpass: LP at 2x freq, HP at 0.5x freq (~±1 octave around freq).
+  // Isolates the bass fundamental before the NLD to prevent IMD from complex
+  // signals. The HP at 0.5x is intentionally tight — sub-bass content below
+  // this range should not enter the NLD as it would generate intermodulation
+  // products with the dominant fundamental.
+  bp_lp_freq = freq * 2.0;
+  bq_lp(bq_mem+ 0*9, bp_lp_freq, srate);
+  bq_lp(bq_mem+ 1*9, bp_lp_freq, srate);
+  bq_lp(bq_mem+ 2*9, bp_lp_freq, srate);
+  bq_lp(bq_mem+ 3*9, bp_lp_freq, srate);
 
-  // 4th-order HP crossover
-  bq_hp(bq_mem+ 4*9, freq, srate);
-  bq_hp(bq_mem+ 5*9, freq, srate);
-  bq_hp(bq_mem+ 6*9, freq, srate);
-  bq_hp(bq_mem+ 7*9, freq, srate);
+  bp_hp_freq = freq * 0.5;
+  bq_hp(bq_mem+ 4*9, bp_hp_freq, srate);
+  bq_hp(bq_mem+ 5*9, bp_hp_freq, srate);
+  bq_hp(bq_mem+ 6*9, bp_hp_freq, srate);
+  bq_hp(bq_mem+ 7*9, bp_hp_freq, srate);
 
-  // 2nd-order HP on harmonic path at 1.5x crossover
-  // Reduced from 4th order: the gentler slope preserves more energy
-  // in the 2nd harmonic which sits just above the cutoff.
-  hpf_freq = freq * 1.5;
-  bq_hp(bq_mem+ 8*9, hpf_freq, srate);
-  bq_hp(bq_mem+ 9*9, hpf_freq, srate);
+  // Output crossover LP: sub-bass band for orig_bass mix
+  bq_lp(bq_mem+ 8*9, freq, srate);
+  bq_lp(bq_mem+ 9*9, freq, srate);
+  bq_lp(bq_mem+10*9, freq, srate);
+  bq_lp(bq_mem+11*9, freq, srate);
 
-  // Spectral envelope shaping — two-shelf cascade to match alternative's curve:
-  //
-  // Shelf 1 (low shelf BOOST): gentle +3dB boost centred at 4x crossover
-  //   (320Hz at 80Hz). This lifts the 3rd-5th harmonic region which is
-  //   the perceptual "body" of the bass on small speakers, matching the
-  //   alternative's peak observed at ~220Hz in the spectrum analysis.
-  //
-  // Shelf 2 (high shelf CUT): tilt_db cut above 6x crossover (480Hz at
-  //   80Hz). The tilt slider controls depth. At default 4dB/oct this
-  //   gives ~-9dB at 1kHz, ~-15dB at 2kHz — matching the alternative's roll-off
-  //   slope measured from the spectrum screenshots.
-  //
-  // Together these give: flat below 200Hz → peak at 220-330Hz → smooth
-  // -9dB/oct decay above 500Hz → gone by 3kHz. Matches alternative's envelope.
+  // Output crossover HP: mids/highs always pass through at full level
+  bq_hp(bq_mem+12*9, freq, srate);
+  bq_hp(bq_mem+13*9, freq, srate);
+  bq_hp(bq_mem+14*9, freq, srate);
+  bq_hp(bq_mem+15*9, freq, srate);
 
-  ls_gain  = 10^(3.0/20);          // +3dB low-shelf boost
-  ls_freq  = freq * 4.0;           // shelf centre at 4x crossover
-  bq_ls(bq_mem+10*9, ls_freq, ls_gain, srate);
-  bq_ls(bq_mem+11*9, ls_freq, ls_gain, srate);
+  // Harmonic HP at 1x crossover freq — removes the processed fundamental from
+  // the harmonic path, preventing it from reinforcing or cancelling the dry signal.
+  // Set at 1x (not 2x) so the 2nd harmonic passes cleanly above the cutoff.
+  bq_hp(bq_mem+16*9, freq, srate);
+  bq_hp(bq_mem+17*9, freq, srate);
 
-  hs_gain  = 10^(-tilt_db/20);     // cut depth from slider
-  hs_freq  = freq * 6.0;           // shelf centre at 6x crossover
-  bq_hs(bq_mem+12*9, hs_freq, hs_gain, srate);
-  bq_hs(bq_mem+13*9, hs_freq, hs_gain, srate);
+  // Spectral tilt: high-shelf cut at 7x crossover (560Hz at 80Hz default).
+  // Placed high enough that the first 7+ harmonics of the NLD input pass cleanly.
+  hs_gain = 10^(-tilt_db/20);
+  hs_freq = freq * 7.0;
+  bq_hs(bq_mem+18*9, hs_freq, hs_gain, srate);
+  bq_hs(bq_mem+19*9, hs_freq, hs_gain, srate);
 
-  // Tight mode low-pass: cuts harmonics above ~4.5x crossover frequency.
-  // At 80Hz crossover this = 360Hz, which is between the 4th harmonic
-  // (220Hz, passes) and the 5th (275Hz, attenuated) and 6th (330Hz, cut).
-  // This gives Tight a distinctly different character from Full —
-  // rounder, more 2nd/3rd dominant, less upper harmonic brightness.
+  // Tight mode LP
   tight_lp_freq = freq * 4.5;
-  bq_lp(bq_mem+14*9, tight_lp_freq, srate);
-  bq_lp(bq_mem+15*9, tight_lp_freq, srate);
+  bq_lp(bq_mem+20*9, tight_lp_freq, srate);
+  bq_lp(bq_mem+21*9, tight_lp_freq, srate);
+
+  // Harmonic LP: 8th-order at 4x freq (~320Hz at 80Hz), -48dB/oct.
+  // Applied in Tight mode only — Full and Bright use the NLD's natural rolloff.
+  harm_lp_freq = freq * 4.0;
+  bq_lp(bq_mem+22*9, harm_lp_freq, srate);  // L pass1
+  bq_lp(bq_mem+23*9, harm_lp_freq, srate);  // R pass1
+  bq_lp(bq_mem+24*9, harm_lp_freq, srate);  // L pass2
+  bq_lp(bq_mem+25*9, harm_lp_freq, srate);  // R pass2
+  bq_lp(bq_mem+26*9, harm_lp_freq, srate);  // L pass3
+  bq_lp(bq_mem+27*9, harm_lp_freq, srate);  // R pass3
+  bq_lp(bq_mem+28*9, harm_lp_freq, srate);  // L pass4
+  bq_lp(bq_mem+29*9, harm_lp_freq, srate);  // R pass4
 
   // Envelope follower: ~10ms attack, ~150ms release
   env_attack  = exp(-1.0/(srate*0.010));
   env_release = exp(-1.0/(srate*0.150));
 
-  // Hold time: ~200ms. Envelope won't start releasing until signal has
-  // been absent for this long, preventing pre-gain spikes on note gaps.
+  // Hold: ~200ms before release begins
   env_hold_samples = srate * 0.200;
 
-  // Harmonic compander timing: ~30ms attack, ~250ms release
-  hcmp_atk = exp(-1.0/(srate*0.030));
-  hcmp_rel = exp(-1.0/(srate*0.250));
-
-  // Bypass crossfade: ~30ms fade — long enough to be click-free,
-  // short enough to feel responsive when toggling manually.
+  // Bypass crossfade: ~30ms
   bypass_coeff = exp(-1.0/(srate*0.030));
 );
 
 @sample
 
-// ---- 1. Crossover ----
-bass_L = bq_process(bq_mem+0*9, spl0);
-bass_L = bq_process(bq_mem+2*9, bass_L);
-bass_R = bq_process(bq_mem+1*9, spl1);
-bass_R = bq_process(bq_mem+3*9, bass_R);
+// ---- 1. Detection bandpass ----
+// Used only to drive the envelope follower and NLD.
+// Not mixed into output.
+det_L = bq_process(bq_mem+ 0*9, spl0);
+det_L = bq_process(bq_mem+ 2*9, det_L);
+det_L = bq_process(bq_mem+ 4*9, det_L);
+det_L = bq_process(bq_mem+ 6*9, det_L);
 
-high_L = bq_process(bq_mem+4*9, spl0);
-high_L = bq_process(bq_mem+6*9, high_L);
-high_R = bq_process(bq_mem+5*9, spl1);
-high_R = bq_process(bq_mem+7*9, high_R);
+det_R = bq_process(bq_mem+ 1*9, spl1);
+det_R = bq_process(bq_mem+ 3*9, det_R);
+det_R = bq_process(bq_mem+ 5*9, det_R);
+det_R = bq_process(bq_mem+ 7*9, det_R);
 
-// ---- 2. Envelope follower with hold (on bass band) ----
-// Attack/release follower with a hold stage between them.
-// The hold prevents the envelope decaying to the floor during short
-// silences (gaps between notes), which would cause extreme pre-gain
-// and a loud thump when the next note arrives.
-abs_L=abs(bass_L); abs_R=abs(bass_R);
+// ---- 2. Output crossover ----
+// LP band: sub-bass, mixed back via orig_bass
+// HP band: mids/highs, always passed through at full level
+bass_L = bq_process(bq_mem+ 8*9, spl0);
+bass_L = bq_process(bq_mem+10*9, bass_L);
+bass_R = bq_process(bq_mem+ 9*9, spl1);
+bass_R = bq_process(bq_mem+11*9, bass_R);
 
-// Left channel
+high_L = bq_process(bq_mem+12*9, spl0);
+high_L = bq_process(bq_mem+14*9, high_L);
+high_R = bq_process(bq_mem+13*9, spl1);
+high_R = bq_process(bq_mem+15*9, high_R);
+
+// ---- 3. Envelope follower with hold (on bandpass signal) ----
+abs_L=abs(det_L); abs_R=abs(det_R);
+
 abs_L > env_L ? (
   env_L = env_L*env_attack + (1-env_attack)*abs_L;
-  env_hold_L = env_hold_samples;  // reset hold counter on signal
+  env_hold_L = env_hold_samples;
 ) : (
   env_hold_L > 0 ? (
-    env_hold_L -= 1;              // hold: don't release yet
+    env_hold_L -= 1;
   ) : (
     env_L = env_L*env_release + (1-env_release)*abs_L;
   );
 );
 
-// Right channel
 abs_R > env_R ? (
   env_R = env_R*env_attack + (1-env_attack)*abs_R;
   env_hold_R = env_hold_samples;
@@ -307,111 +285,95 @@ abs_R > env_R ? (
   );
 );
 
-// ---- 3. Pre-gain + NLD ----
-// Drive signal up before the nonlinearity so harmonics activate at
-// typical mix levels. The pre-gain is normalised by the envelope so
-// the NLD always sees a consistent drive level regardless of input
-// level — this is what gives the "compressed" character of alternative.
-// The harmonic output is then returned to the correct level by
-// multiplying by the envelope afterwards (timbre matching).
-//
-// The floor of 0.01 (-40dBFS equivalent) limits maximum pre-gain to
-// 0.5/0.01 = 50x, preventing extreme gain spikes after silence.
-// Previously 0.0001 gave up to 5000x gain — the cause of the thump.
+// ---- 4. Pre-gain normalisation ----
+safe_env_L = max(env_L, env_floor);
+safe_env_R = max(env_R, env_floor);
 
-safe_env_L = max(env_L, 0.01);
-safe_env_R = max(env_R, 0.01);
+// nld_drive=1.8, dc=0.78, k=0.28, harm_cal=5.0 — empirically tuned by
+// listening and spectrum comparison against reference product.
+nld_drive = 1.8;
+drive_L = det_L * (nld_drive / safe_env_L);
+drive_R = det_R * (nld_drive / safe_env_R);
 
-// Target drive level into NLD: normalise bass to ~0.5 RMS equivalent
-nld_drive = 0.5;
-drive_L = bass_L * (nld_drive / safe_env_L);
-drive_R = bass_R * (nld_drive / safe_env_R);
-
-// Clip drive to prevent extreme values on transients
 drive_L = max(min(drive_L, 4.0), -4.0);
 drive_R = max(min(drive_R, 4.0), -4.0);
 
-// Feedback-multiplier NLD
-// y = x*(1 + k*|x|) then soft-clip
-// Generates strong 2nd harmonic (even) and 3rd+ (odd)
-function feedback_nld(x)
-  local(y,sc)
-(
-  y = x*(1.0 + 1.2*abs(x));
-  sc = abs(y)>1 ? sign(y)*(1-exp(-(abs(y)-1)))+sign(y) : y;
-  sc
-);
-
-nld_L = feedback_nld(drive_L);
-nld_R = feedback_nld(drive_R);
-
-// ---- 4. Harmonic style blending ----
-// Full:   raw NLD output — rich series, closest to alternative's character.
-//         Best for bass guitar.
-// Tight:  LP filtered at 4.5x crossover — short series, focused low-mids,
-//         drops off after ~600Hz. Punchy and defined.
-// Bright: NLD blended with full-wave rectification — very extended series
-//         to 10kHz+. Use sparingly; best for synth bass or kick drum.
-
-style==0 ? (  // Full — smooth decay series, best alternative product match
-  harm_L = nld_L;
-  harm_R = nld_R;
-) : style==1 ? (  // Tight — LP filtered, short focused series
-  harm_L = bq_process(bq_mem+14*9, nld_L);
-  harm_R = bq_process(bq_mem+15*9, nld_R);
-) : (  // Bright — rectified blend, extended series to 10kHz+
-  harm_L = nld_L*0.5 + abs(nld_L)*0.5;
-  harm_R = nld_R*0.5 + abs(nld_R)*0.5;
-);
-
-// ---- 5. Re-scale by envelope (timbre matching) ----
-// Multiply back by the envelope so the harmonic output level tracks
-// the input dynamics. This is the correct place for timbre matching —
-// it preserves the instrument's dynamic character without suppressing
-// the harmonic level. The compander smooths the gain to avoid artifacts.
-
-timbre_ratio_L = safe_env_L;
-timbre_ratio_R = safe_env_R;
-
-timbre_ratio_L > hcmp_L ? (
-  hcmp_L = hcmp_L*hcmp_atk + (1-hcmp_atk)*timbre_ratio_L;
-) : (
-  hcmp_L = hcmp_L*hcmp_rel + (1-hcmp_rel)*timbre_ratio_L;
-);
-timbre_ratio_R > hcmp_R ? (
-  hcmp_R = hcmp_R*hcmp_atk + (1-hcmp_atk)*timbre_ratio_R;
-) : (
-  hcmp_R = hcmp_R*hcmp_rel + (1-hcmp_rel)*timbre_ratio_R;
-);
-
-harm_L *= hcmp_L * intensity;
-harm_R *= hcmp_R * intensity;
-
-// ---- 6. High-pass harmonics (2nd order at 1.5x crossover) ----
-harm_L = bq_process(bq_mem+ 8*9, harm_L);
-harm_R = bq_process(bq_mem+ 9*9, harm_R);
-
-// ---- 7. Spectral envelope shaping (two-shelf cascade) ----
-// Low-shelf boost: lifts 2nd-4th harmonic peak region
-harm_L = bq_process(bq_mem+10*9, harm_L);
-harm_R = bq_process(bq_mem+11*9, harm_R);
-// High-shelf cut: smooth roll-off above ~500Hz
-harm_L = bq_process(bq_mem+12*9, harm_L);
-harm_R = bq_process(bq_mem+13*9, harm_R);
-
-// ---- 8. Bypass crossfade + sum ----
-// bypass_gain smoothly tracks bypass_target (slider8) via a ~30ms
-// exponential fade. Toggling or automating the slider is always
-// click-free regardless of Reaper's host bypass mechanism.
+// ---- 5. NLD — recursive feedback multiplier with DC bias ----
+// y[n] = (x[n] + dc_scaled) * (1 + k * |y[n-1]|)
 //
-// bypass_gain == 1: fully active   (wet signal)
-// bypass_gain == 0: fully bypassed (dry signal passthrough)
+// DC bias breaks even symmetry of |y[n-1]| so both even and odd harmonics
+// are generated. The bias is envelope-scaled to prevent background harmonic
+// generation during silence. DC is removed by the harmonic HP filter downstream.
+//
+// Soft limiter y/(1+|y|/4) on the feedback state prevents runaway on transients
+// without hard-clipping the recursive term (which would distort harmonic shape).
+
+dc_scale = min(safe_env_L / 0.1, 1.0);
+fmL = (drive_L + 0.78 * dc_scale) * (1.0 + 0.28 * abs(fmL));
+dc_scale = min(safe_env_R / 0.1, 1.0);
+fmR = (drive_R + 0.78 * dc_scale) * (1.0 + 0.28 * abs(fmR));
+
+fmL = fmL / (1.0 + abs(fmL) / 4.0);
+fmR = fmR / (1.0 + abs(fmR) / 4.0);
+
+// Decay feedback state toward zero when bypassed. bypass_gain is already a
+// smooth 0→1 ramp (30ms crossfade), so multiplying by it here means fmL/fmR
+// naturally drain to zero as the plugin fades out, and rebuild from zero as
+// it fades back in — preventing a stale transient state on re-engagement.
+fmL *= bypass_gain;
+fmR *= bypass_gain;
+
+nld_L = fmL;
+nld_R = fmR;
+
+// ---- 6. Scale by envelope + intensity + calibration ----
+harm_cal = 5.0;
+harm_L = nld_L * safe_env_L * intensity * harm_cal;
+harm_R = nld_R * safe_env_R * intensity * harm_cal;
+
+// ---- 7. Harmonic style blending + per-style LP ----
+// Full: NLD natural decay, no additional filtering.
+// Tight: LP at 4.5x crossover, then 8th-order harmonic LP at 4x — short focused series.
+// Bright: half-wave rectified blend for extended harmonic content.
+style==0 ? (  // Full — natural harmonic decay, no additional LP
+  harm_L = harm_L;
+  harm_R = harm_R;
+) : style==1 ? (  // Tight — LP at 4.5x crossover then harmonic LP at 4x
+  harm_L = bq_process(bq_mem+20*9, harm_L);
+  harm_R = bq_process(bq_mem+21*9, harm_R);
+  harm_L = bq_process(bq_mem+22*9, harm_L);
+  harm_L = bq_process(bq_mem+24*9, harm_L);
+  harm_L = bq_process(bq_mem+26*9, harm_L);
+  harm_L = bq_process(bq_mem+28*9, harm_L);
+  harm_R = bq_process(bq_mem+23*9, harm_R);
+  harm_R = bq_process(bq_mem+25*9, harm_R);
+  harm_R = bq_process(bq_mem+27*9, harm_R);
+  harm_R = bq_process(bq_mem+29*9, harm_R);
+) : (  // Bright — half-wave rectified blend, extended series, no LP
+  harm_L = harm_L*0.5 + abs(harm_L)*0.5;
+  harm_R = harm_R*0.5 + abs(harm_R)*0.5;
+);
+
+// ---- 8. Harmonic HP (at 1x crossover freq) ----
+// Removes any residual fundamental so it doesn't reinforce or cancel
+// the fundamental already present in the dry signal
+harm_L = bq_process(bq_mem+16*9, harm_L);
+harm_R = bq_process(bq_mem+17*9, harm_R);
+
+// ---- 9. Spectral tilt ----
+harm_L = bq_process(bq_mem+18*9, harm_L);
+harm_R = bq_process(bq_mem+19*9, harm_R);
+
+// ---- 10. Bypass crossfade + sum ----
+// Sub-bass bleed: even at 0% orig_bass, 15% of the LP band is mixed in.
+// The reference product doesn't completely cut sub-bass even at minimum
+// orig bass — this 15% floor matches that behaviour.
+orig_bass_eff = max(orig_bass, 0.15);
 
 bypass_gain = bypass_gain*bypass_coeff + bypass_target*(1.0 - bypass_coeff);
 
-// out_gain applied to wet path only, so bypassed signal passes at unity
-wet_L = (high_L + bass_L*orig_bass + harm_L*harm_mix) * out_gain;
-wet_R = (high_R + bass_R*orig_bass + harm_R*harm_mix) * out_gain;
+wet_L = (high_L + bass_L*orig_bass_eff + harm_L*harm_mix) * out_gain;
+wet_R = (high_R + bass_R*orig_bass_eff + harm_R*harm_mix) * out_gain;
 
 spl0 = spl0*(1.0 - bypass_gain) + wet_L*bypass_gain;
 spl1 = spl1*(1.0 - bypass_gain) + wet_R*bypass_gain;

@@ -25,28 +25,66 @@ Controls:
   Intensity       - Harmonic generation amount (0-100%)
   Original Bass   - Level of sub-bass in output (0-100%)
   Harmonics Mix   - Blend of generated harmonics (0-100%)
-  Output Gain     - Output trim (-24 to +10 dB)
+  Output Gain     - Output trim (-24 to +10 dB), wet signal only
   Harmonic Tilt   - Roll-off of upper harmonics (0-8 dB/oct)
-  Harmonic Style  - Full (smooth decay ~2kHz, best for bass guitar),
-                    Tight (focused low-mids, drops ~600Hz, kick drum),
-                    Bright (raw NLD, extends to 10kHz+, use sparingly)
-  Bypass           - Toggle effect on/off
+  Harmonic Style  - Full (natural harmonic decay, perceptually bounded LP),
+                    Tight (focused low-mids, LP at 4.5x crossover freq),
+                    Bright (half-wave rectified blend, extended series)
+  Bypass          - Click-free dry/wet crossfade, automatable
 
 Suggested starting point for bass guitar:
   Frequency: 85Hz, Intensity: 55%, Original Bass: 75%, Harmonics Mix: 60%,
   Tilt: 4dB, Style: Full]]></description>
         <link rel="website">https://github.com/stevewcox/SteveCoxJSFX</link>
       </metadata>
-      <version name="0.2.9" author="stevewcox" time="2026-03-13T00:50:00Z">
-        <changelog><![CDATA[v0.2.9 
+      <version name="0.4.12" author="stevewcox" time="2026-03-14T00:00:00Z">
+        <changelog><![CDATA[v0.4.12 - Feedback state reset on bypass
+  - fmL/fmR feedback state now decays to zero during bypass by multiplying
+    by bypass_gain each sample — prevents stale transient state on re-engagement
 
-v0.2.x - Major architecture revision:
-  - NLD pre-gain normalisation for consistent drive at any input level
-  - Compander redesigned: harmonics now scale with envelope rather than being suppressed
-  - Two-shelf spectral envelope replaces single tilt shelf
-  - Harmonic HP reduced to 2nd order to preserve 2nd harmonic energy
-  - Output Gain default changed to 0dB
-  - Tilt range extended to 8 dB/oct]]></changelog>
+v0.4.11 - NLD parameter update + comment cleanup
+  - nld_drive=1.8, dc=0.78, k=0.28, harm_cal=5.0 (empirically tuned)
+  - Removed all superseded NLD iteration history from source comments
+
+v0.4.10 - Hard clip on feedback state replaced with soft limiter
+  - y/(1+|y|/4) prevents runaway without distorting harmonic structure
+
+v0.4.9 - Distortion safeguards
+  - Envelope-scaled DC bias prevents background harmonics during silence
+  - Safety clip tightened (superseded by soft limiter in v0.4.10)
+
+v0.4.8 - NLD parameters tuned; tilt shelf raised to 7× freq
+
+v0.4.7 - DC bias added to feedback multiplier for even harmonic generation
+
+v0.4.6 - NLD replaced with recursive feedback multiplier
+  - y[n] = x[n] * (1 + k * |y[n-1]|) — original MaxxBass architecture
+    (patent US5930373, expired September 2019)
+  - Recursive structure naturally extends harmonics to high frequencies
+
+v0.4.0–0.4.5 - NLD exploration (polynomial and tanh, superseded by v0.4.6)
+
+v0.3.8–0.3.9 - Calibration from clean 50Hz sine comparison
+  - Harmonic LP moved to Tight mode only (Full/Bright LP-free)
+  - Original Bass default reduced 70% → 50%
+
+v0.3.7 - Reverted (bandpass HP change caused IMD)
+
+v0.3.6 - Harmonic LP upgraded to 8th-order at 4× freq
+
+v0.3.5 - Harmonic LP upgraded to 6th-order at 5× freq
+
+v0.3.4 - Harmonic LP upgraded to 4th-order at 6× freq
+
+v0.3.3 - Harmonic LP added (2nd-order at 10× freq)
+
+v0.3.2 - NLD even-harmonic fix; harmonic HP moved to 1× freq; sub-bass bleed
+
+v0.3.1 - orig_bass now scales only LP sub-bass, not full dry signal
+
+v0.3.0 - Bandpass detection path; output crossover; compander removed
+
+v0.2.x - NLD pre-gain normalisation, compander redesign, bypass slider]]></changelog>
         <source main="effect">https://github.com/stevewcox/SteveCoxJSFX/raw/main/Effects/PsychoBass.jsfx</source>
       </version>
     </reapack>

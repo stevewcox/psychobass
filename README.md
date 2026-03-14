@@ -21,14 +21,14 @@ The challenge is generating those harmonics in a way that sounds like the origin
 
 ## Features
 
+- **Recursive feedback multiplier NLD** — `y[n] = (x[n] + dc) × (1 + k × |y[n-1]|)`, the original MaxxBass architecture (patent expired 2019). Generates a full even+odd harmonic series extending to high frequencies; DC bias controls even/odd balance; soft limiter and envelope-scaled bias prevent distortion artefacts
+- **Bandpass-isolated NLD drive** — a narrow bandpass filter (±1 octave around the crossover) isolates the fundamental before the NLD, preventing intermodulation from complex signals (bass guitar chords, double stops) and keeping the generated harmonic series clean
 - **Timbre-matched harmonic generation** — the NLD is driven at a normalised level then re-scaled by the signal envelope, so harmonics track the instrument's dynamics naturally rather than sitting at a fixed level
-- **Feedback-multiplier nonlinear device (NLD)** — generates a rich harmonic series with strong 2nd and 3rd harmonics, similar to asymmetric tube saturation, avoiding the harsh character of simple clipping or rectification
-- **Phase-cancellation-free architecture** — the harmonic path is high-passed at 1.5× the crossover frequency, ensuring no frequency overlap between the direct bass signal and the NLD output (eliminates comb-filter notches)
-- **Two-shelf spectral envelope** — a low-shelf boost lifts the 2nd–4th harmonic peak region, while a high-shelf cut rolls off the upper series smoothly, matching the harmonic decay shape of a natural instrument
-- **Three harmonic styles** — Full (smooth decay to ~2kHz), Tight (focused low-mids, drops off ~600Hz), Bright (extended series to 10kHz+)
-- **4th-order Butterworth crossover** — clean separation of the bass band from the rest of the signal
-- **Independent Original Bass control** — reduce the fundamental to let the harmonics carry more of the perceived weight on small speakers
-- **Output gain** — -24dB to +10dB trim
+- **Perceptually bounded harmonic LP** — an 8th-order low-pass at 4× the crossover frequency (-48dB/oct) removes content above the perceptually active range for the missing fundamental effect (~100–500Hz), matching the rolloff shape of the reference product
+- **Correct output crossover architecture** — mids and highs above the crossover always pass through at full level; only the sub-bass below the crossover is scaled by the Original Bass control, matching the behaviour expected from a psychoacoustic bass enhancer
+- **Sub-bass bleed floor** — a 15% minimum is applied to the Original Bass path so the sub-bass is never completely removed, matching the reference product's behaviour at minimum Original Bass
+- **Three harmonic styles** — Full (smooth, natural harmonic decay), Tight (LP filtered, focused low-mids), Bright (half-wave rectified blend, extended harmonic series)
+- **4th-order Butterworth crossover** — clean separation of the bass band used for the output mix
 - **Automatable bypass** — click-free dry/wet crossfade bypass that can be automated on any track
 
 ---
@@ -73,7 +73,7 @@ No compilation or dependencies required.
 | **Harmonics Mix** | 0–100% | 65% | Blend of the generated harmonics into the output. |
 | **Output Gain** | -24 to +10 dB | 0 dB | Output trim. Applied to the wet signal only — has no effect when bypassed. |
 | **Harmonic Tilt** | 0–8 dB/oct | 4 dB/oct | Depth of the high-shelf cut on the harmonic path. Higher values roll off the upper series more steeply. 0 = flat. |
-| **Harmonic Style** | — | Full | **Full**: smooth decay to ~2kHz, closest to character of a well-known alternative — best for bass guitar and upright bass. **Tight**: LP filtered, drops off ~600Hz, focused low-mids — suits kick drum. **Bright**: raw NLD output, extends to 10kHz+, use sparingly. |
+| **Harmonic Style** | — | Full | **Full**: natural harmonic decay, perceptually bounded LP at 4× crossover freq — best for bass guitar and upright bass. **Tight**: LP filtered at 4.5× crossover, focused low-mids — suits kick drum. **Bright**: half-wave rectified blend, extended harmonic series with no upper LP — use sparingly on synth bass. |
 | **Bypass** | Bypassed / Active | Active | Engages or disengages the plugin with a ~30ms dry/wet crossfade to prevent clicks. Can be automated via right-click → "Add automation lane for Bypass". When bypassed, the signal passes through unprocessed at unity gain. |
 
 ---
@@ -139,49 +139,55 @@ Frequency: 65Hz · Intensity: 50% · Original Bass: 70% · Harmonics Mix: 50% ·
 
 ## How It Works
 
-The signal path has eight stages:
+The signal path has three parallel branches that are summed at the output:
 
 ```
 Input
   │
-  ├─── 4th-order HP crossover ──────────────────────────────────┐
-  │                                                              │
-  └─── 4th-order LP crossover                                   │
-         │                                                       │
-         ├── Envelope follower                                   │
-         │                                                       │
-         ├── Normalise to NLD drive level                        │
-         │   (envelope-referenced pre-gain)                      │
-         │                                                       │
-         └── Feedback-multiplier NLD                             │
-               │                                                 │
-               ├── Harmonic style blend                          │
-               │                                                 │
-               ├── Re-scale by envelope (timbre matching)        │
-               │   smoothed by attack/release compander          │
-               │                                                 │
-               ├── 2nd-order HP at 1.5× crossover freq          │
-               │   (removes overlap with fundamental)            │
-               │                                                 │
-               └── Two-shelf spectral envelope                   │
-                   (low-shelf boost + high-shelf tilt cut)       │
-                     │                                           │
-                     └────── Mix ──────────────────────────────┘
-                                │
-                           Output gain
-                                │
-                        Bypass crossfade
-                                │
-                             Output
+  ├─── 4th-order HP crossover ──────────────────────────────────────────┐
+  │    (mids/highs above crossover freq, always full level)             │
+  │                                                                      │
+  ├─── 4th-order LP crossover ── × Original Bass (min 15%) ────────────┤
+  │    (sub-bass below crossover freq)                                  │
+  │                                                                      │
+  └─── Bandpass (4th-order LP at 2×freq + 4th-order HP at 0.5×freq)   │
+         │  (isolates fundamental ±1 octave — NLD drive only)           │
+         │                                                               │
+         ├── Envelope follower (10ms attack / 150ms release / 200ms hold)│
+         │                                                               │
+         ├── Normalise to NLD drive level                                │
+         │                                                               │
+         └── Recursive feedback multiplier NLD                           │
+               y[n] = (x[n] + dc) × (1 + k × |y[n-1]|)                │
+               Soft limiter on feedback state                            │
+               │                                                         │
+               ├── Harmonic style blend (Full / Tight / Bright)         │
+               │                                                         │
+               ├── Re-scale by envelope × Intensity                     │
+               │                                                         │
+               ├── 2nd-order HP at 1× crossover freq                    │
+               │   (removes processed fundamental from harmonic path)    │
+               │                                                         │
+               └── High-shelf spectral tilt at 7× crossover             │
+                     │                                                   │
+                     └── × Harmonics Mix                                 │
+                               │                                         │
+                               └──────────── Sum ───────────────────────┘
+                                               │
+                                          Output Gain
+                                               │
+                                        Bypass crossfade
+                                               │
+                                            Output
 ```
 
-**Normalised NLD drive** is the key to consistent harmonic generation at any input level. The bass band signal is scaled to a fixed drive level before the nonlinearity, so the NLD always generates a full harmonic series regardless of whether the input is loud or quiet. The envelope is then multiplied back in after the NLD, restoring correct dynamics. This is what gives the plugin its compressed, saturated character at moderate settings.
+**Bandpass-isolated NLD** is the key to consistent behaviour on complex signals. Rather than feeding a low-pass crossover into the NLD (which would pass multiple harmonics of a chord and generate intermodulation products between them), a narrow bandpass (±1 octave around the crossover frequency) isolates the bass fundamental before the nonlinearity. The NLD then generates harmonics from a single pitched source, keeping the output clean regardless of signal complexity.
 
-**Timbre matching** ensures the harmonics track the instrument's natural dynamics. The re-scaling compander uses separate attack and release times so it follows transients without pumping, preserving the instrument's articulation even at high Intensity settings.
+**Recursive feedback multiplier NLD** is based on the original MaxxBass architecture (Ben-Tzur & Colloms AES 1999, patent US5930373 expired September 2019). The formula `y[n] = (x[n] + dc) × (1 + k × |y[n-1]|)` is a one-sample recursive loop where each output sample depends on the previous one. This naturally generates a rich harmonic series extending to high frequencies — something memoryless nonlinearities cannot replicate, as they always cut off where their Taylor series saturates. The DC bias `dc` breaks the even symmetry of `|y[n-1]|` so both even and odd harmonics are present; the bias is envelope-scaled to prevent background tones during silence, and the DC itself is removed by the downstream HP filter. A soft limiter on the feedback state prevents runaway on transients. The feedback state is also decayed to zero during bypass so no stale state is present on re-engagement.
 
-**Phase cancellation suppression** addresses a common problem in naive implementations: when the NLD output contains energy at the same frequencies as the direct signal, any phase difference causes comb-filter notches — visible as regular dips in the spectrum and audible as a hollow, electronic character. By high-passing the harmonic output at 1.5× the crossover frequency, the two paths occupy entirely separate frequency ranges and cannot interfere.
+**Normalised NLD drive** ensures the NLD always generates a full harmonic series regardless of input level. The bandpass signal is scaled to a fixed drive level before the nonlinearity, then the envelope is multiplied back in after, restoring correct dynamics.
 
-**Two-shelf spectral envelope** shapes the harmonic series to match the decay curve of a natural instrument. A low-shelf boost lifts the 2nd–4th harmonic region (the perceptual "body" of the bass on small speakers), and a high-shelf cut rolls off the upper series at a rate set by the Harmonic Tilt slider. Together these produce a smooth downward envelope peaking at the 3rd–4th harmonic, rather than a flat or stepped series.
+**Correct crossover architecture** separates the output mix into three components: mids/highs (always full level), sub-bass (scaled by Original Bass, with a 15% floor), and generated harmonics (scaled by Harmonics Mix). The Original Bass control affects only the sub-fundamental content below the crossover — the mid and high content passes through regardless.
 
 ---
 
@@ -194,7 +200,7 @@ The approach is based on the following published research:
 - Mu, B., Gan, W.-S. & Tan, E.-L. (2013). *Timbre matching of inharmonic signals for virtual bass system*. ICASSP.
 - Oo, Z.Z. & Gan, W.-S. *Analysis of nonlinear devices for virtual bass systems.*
 
-The nonlinear device is a feedback-multiplier design: `y = x · (1 + k·|x|)` followed by exponential soft-clipping. This produces a musically weighted harmonic series with strong 2nd and 3rd harmonics, analogous to asymmetric tube saturation.
+The nonlinear device is a recursive feedback multiplier: `y[n] = (x[n] + dc) × (1 + k × |y[n-1]|)`. The DC bias generates both even and odd harmonics; the recursive structure extends the harmonic series naturally to high frequencies. Parameters are empirically tuned by spectrum comparison against the reference product.
 
 ---
 
