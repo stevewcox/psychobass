@@ -67,10 +67,10 @@ No compilation or dependencies required.
 
 | Slider | Range | Default | Description |
 |---|---|---|---|
+| **Original Bass** | 0–100% | 50% | Level of the original sub-bass in the output. Reducing this lets the harmonics carry more of the perceived bass on small speakers. A 15% minimum is always retained. |
 | **Frequency** | 40–200 Hz | 80 Hz | Crossover point. Set just above the fundamental of your lowest note. Bass guitar: 80–100Hz. Kick drum: 60–80Hz. |
-| **Intensity** | 0–100% | 60% | How strongly harmonics are generated. Start around 50–65% and increase to taste. |
-| **Original Bass** | 0–100% | 70% | Level of the original sub-bass in the output. Reducing this lets the harmonics carry more of the perceived bass on small speakers. |
-| **Harmonics Mix** | 0–100% | 65% | Blend of the generated harmonics into the output. |
+| **Intensity** | 0–100% | 50% | Controls how hard the NLD is driven, changing the *character* of the harmonics. Low values give a sparse, subtle series; high values give a richer, more saturated series with stronger high-order harmonics. |
+| **Harmonics Mix** | 0–100% | 50% | Blend level of the generated harmonics in the output. Unlike Intensity, this is a simple level control — it does not change harmonic character. |
 | **Output Gain** | -24 to +10 dB | 0 dB | Output trim. Applied to the wet signal only — has no effect when bypassed. |
 | **Harmonic Tilt** | 0–8 dB/oct | 4 dB/oct | Depth of the high-shelf cut on the harmonic path. Higher values roll off the upper series more steeply. 0 = flat. |
 | **Harmonic Style** | — | Full | **Full**: natural harmonic decay, perceptually bounded LP at 4× crossover freq — best for bass guitar and upright bass. **Tight**: LP filtered at 4.5× crossover, focused low-mids — suits kick drum. **Bright**: half-wave rectified blend, extended harmonic series with no upper LP — use sparingly on synth bass. |
@@ -82,37 +82,37 @@ No compilation or dependencies required.
 
 PsychoBass is designed to be set up in a specific order. Working through the controls from top to bottom — rather than adjusting everything at once — makes it much easier to dial in a good result.
 
-### 1. Set the crossover frequency
+### 1. Set the Original Bass level
 
-The **Frequency** control determines which part of the signal is treated as "bass" and sent to the harmonic generator. Set it just above the fundamental of the lowest note your instrument plays — low enough that the fundamental itself stays in the bass band, high enough that you're not feeding mid-range content into the NLD.
+Start by deciding how much of the original sub-bass you want to retain. On a full-range system, leave **Original Bass** near 100%. On a mix intended mainly for small speakers, reducing it lets the harmonics carry more of the perceived bass weight — the fundamental that small speakers cannot reproduce anyway can be pulled back without losing the sense of bass.
 
-For most bass guitar, 80–90Hz is a good starting point. For kick drum, try 60–70Hz. If you set it too high, the plugin will start generating harmonics from mid-range content and the result will sound cluttered. If you set it too low, the fundamental may not trigger the harmonic generator consistently.
+### 2. Set the crossover frequency
 
-### 2. Engage the harmonics with Intensity
+The **Frequency** control determines which part of the signal is treated as "bass" and sent to the harmonic generator. Set it just above the fundamental of the lowest note your instrument plays.
 
-With **Original Bass** and **Harmonics Mix** both at 100%, raise **Intensity** until you can clearly hear the harmonics being added. On a small speaker or earbud, this is the point where the bass starts to become audible as a pitched sound rather than a vague low-frequency presence.
+For most bass guitar, 80–90Hz is a good starting point. For kick drum, try 60–70Hz. If set too high, the plugin will start generating harmonics from mid-range content and the result will sound cluttered. If set too low, the fundamental may not trigger the harmonic generator consistently.
 
-Intensity controls how hard the nonlinear device is driven, which affects both the level and the character of the harmonics. At low settings the harmonic series is sparse and subtle; at higher settings it becomes richer and more saturated. Most sources sit well somewhere in the 45–70% range. Going too high makes the result sound electronic rather than musical — if the harmonics feel synthetic or harsh, back Intensity off before reaching for any other control.
+### 3. Shape the harmonic character with Intensity
 
-### 3. Choose a harmonic style
+Raise **Intensity** until you can clearly hear the harmonics being added. On a small speaker or earbud, this is the point where the bass starts to become audible as a pitched sound rather than a vague low-frequency presence.
+
+Unlike a simple level control, Intensity changes the *character* of the harmonics by controlling how hard the NLD is driven. At low settings the harmonic series is sparse and subtle (mainly 2nd and 3rd harmonics). At higher settings the series becomes richer and more saturated, with stronger high-order content. Going too high makes the result sound electronic — if the harmonics feel synthetic or harsh, back Intensity off.
+
+### 4. Choose a harmonic style
 
 **Full** is the default and suits most sources — it produces a smooth harmonic series that decays naturally above ~2kHz, similar to the character of a well-saturated instrument. **Tight** rolls off sharply above ~600Hz, which works well for kick drum or when you want the enhancement to stay focused in the low-mids without adding upper harmonic brightness. **Bright** extends the series all the way to 10kHz+ and is best used sparingly on synth bass where that additional presence is part of the intended sound.
 
-### 4. Shape the harmonic decay with Harmonic Tilt
+### 5. Shape the harmonic decay with Harmonic Tilt
 
 Once you have harmonics you like, **Harmonic Tilt** controls how steeply the upper harmonics roll off. At 0 the harmonic series is relatively flat; higher values increasingly favour the lower harmonics (2nd, 3rd, 4th) over the upper ones. This is useful for making the enhancement blend more naturally — most acoustic instruments have a harmonic series that decays with frequency, so a moderate tilt of 3–5dB/oct tends to sound most natural. If the harmonics feel bright or abrasive on playback, increase the tilt before reducing Intensity.
 
-### 5. Balance the output with Harmonics Mix and Original Bass
+### 6. Set the blend level with Harmonics Mix
 
-These two controls determine the final blend of the three signal components: the high-frequency content above the crossover (always passed through untouched), the original bass fundamental, and the generated harmonics.
+**Harmonics Mix** is a simple level fader applied after all NLD processing — it does not change the character of the harmonics (that is Intensity's job), only how prominent they are in the output. Use it to blend the generated harmonics naturally into the track at the character already set by Intensity.
 
-**Harmonics Mix** sets how much of the processed harmonic signal appears in the output. Unlike Intensity, this is a simple level fader applied after all processing — it does not change the character of the harmonics, only how prominent they are. Use it to blend the harmonics naturally into the track.
+A good workflow is to set Harmonics Mix on the target playback device (phone speaker, earbuds) until the bass feels present, then check back on a full-range system to confirm the overall balance.
 
-**Original Bass** sets the level of the original sub-bass fundamental. On a full-range system you will typically want this at or near 100% so the low end remains intact. On a mix intended for small speakers you may find it useful to reduce it — the harmonics carry the perceived bass weight, and pulling back the fundamental that small speakers cannot reproduce anyway can actually make the bass feel tighter and more present on those devices.
-
-A good workflow is to set Harmonics Mix first on the target playback device (phone speaker, earbuds) until the bass feels present, then check back on a full-range system and adjust Original Bass to make sure the low end still has the right weight there.
-
-### 6. Trim the output level
+### 7. Trim the output level
 
 **Output Gain** is a final level trim applied to the wet signal. Use it to compensate for any overall level change the plugin introduces. It has no effect when the plugin is bypassed, so it is useful for gain-matched A/B comparisons — set it so the bypassed and active signals feel roughly equal in loudness, then the difference you hear is purely the character of the enhancement rather than a level change.
 
@@ -121,19 +121,19 @@ A good workflow is to set Harmonics Mix first on the target playback device (pho
 ## Suggested Starting Points
 
 **Bass guitar (finger style)**
-Frequency: 85Hz · Intensity: 55% · Original Bass: 75% · Harmonics Mix: 60% · Tilt: 4dB · Style: Full
+Original Bass: 75% · Frequency: 85Hz · Intensity: 55% · Harmonics Mix: 55% · Tilt: 4dB · Style: Full
 
 **Bass guitar (pick / aggressive)**
-Frequency: 90Hz · Intensity: 60% · Original Bass: 65% · Harmonics Mix: 65% · Tilt: 3dB · Style: Full
+Original Bass: 65% · Frequency: 90Hz · Intensity: 60% · Harmonics Mix: 60% · Tilt: 3dB · Style: Full
 
 **Upright / acoustic bass**
-Frequency: 80Hz · Intensity: 45% · Original Bass: 80% · Harmonics Mix: 50% · Tilt: 5dB · Style: Full
+Original Bass: 80% · Frequency: 80Hz · Intensity: 45% · Harmonics Mix: 45% · Tilt: 5dB · Style: Full
 
 **Synth bass**
-Frequency: 70Hz · Intensity: 60% · Original Bass: 60% · Harmonics Mix: 65% · Tilt: 2dB · Style: Bright
+Original Bass: 60% · Frequency: 70Hz · Intensity: 60% · Harmonics Mix: 60% · Tilt: 2dB · Style: Bright
 
 **Kick drum**
-Frequency: 65Hz · Intensity: 50% · Original Bass: 70% · Harmonics Mix: 50% · Tilt: 4dB · Style: Tight
+Original Bass: 70% · Frequency: 65Hz · Intensity: 50% · Harmonics Mix: 50% · Tilt: 4dB · Style: Tight
 
 ---
 

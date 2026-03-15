@@ -3,7 +3,7 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //              Adds upper harmonics to bass signals so they remain audible on small
 //              speakers and earbuds, without the synthetic character of naive harmonic
 //              generators. Based on published Virtual Bass System research.
-// @version 0.4.12
+// @version 0.4.14
 // @author stevewcox (Steve Cox / PsychoBass Contributors)
 // @license MIT
 // @provides
@@ -51,11 +51,13 @@ desc: PsychoBass - Psychoacoustic Bass Enhancer
 //     preventing a stale transient state from appearing on bypass toggle.
 //   - Parameters nld_drive, dc, k, harm_cal empirically tuned by spectrum
 //     comparison against the reference product using a 50Hz sine test tone.
+//     In v0.4.13, nld_drive is replaced by the Intensity slider (0–100% maps
+//     to drive 0–3.0, so 60% default = drive 1.8, the previously tuned value).
 
-slider1:80<40,200,1>Frequency (Hz)
-slider2:60<0,100,1>Intensity (%)
-slider3:50<0,100,1>Original Bass (%)
-slider4:65<0,100,1>Harmonics Mix (%)
+slider1:50<0,100,1>Original Bass (%)
+slider2:80<40,200,1>Frequency (Hz)
+slider3:50<0,100,1>Intensity (%)
+slider4:50<0,100,1>Harmonics Mix (%)
 slider5:0<-24,10,0.5>Output Gain (dB)
 slider6:4<0,8,0.5>Harmonic Tilt (dB/oct)
 slider7:0<0,2,1{Full (smooth decay),Tight (focused low-mids),Bright (extended series)}>Harmonic Style
@@ -148,9 +150,9 @@ bypass_coeff = 0;
 
 @slider
 
-freq          = slider1;
-intensity     = slider2 * 0.01;
-orig_bass     = slider3 * 0.01;
+orig_bass     = slider1 * 0.01;
+freq          = slider2;
+intensity     = slider3 * 0.01;
 harm_mix      = slider4 * 0.01;
 out_gain      = 10^(slider5/20);
 tilt_db       = slider6;
@@ -289,9 +291,15 @@ abs_R > env_R ? (
 safe_env_L = max(env_L, env_floor);
 safe_env_R = max(env_R, env_floor);
 
-// nld_drive=1.8, dc=0.78, k=0.28, harm_cal=5.0 — empirically tuned by
-// listening and spectrum comparison against reference product.
-nld_drive = 1.8;
+// Intensity (0–100%) scales nld_drive 0→3.0.
+// At 60% (default): drive = 1.8 — matches the empirically tuned value.
+// Higher intensity = harder NLD drive = richer harmonic series with more
+// high-order content and a more saturated character.
+// Lower intensity = softer drive = fewer harmonics, subtler effect.
+// This makes Intensity genuinely different from Harmonics Mix:
+//   Intensity  → changes harmonic CHARACTER (drive level into NLD)
+//   Harmonics Mix → changes harmonic LEVEL (post-processing blend)
+nld_drive = intensity * 3.0;
 drive_L = det_L * (nld_drive / safe_env_L);
 drive_R = det_R * (nld_drive / safe_env_R);
 
@@ -326,10 +334,13 @@ fmR *= bypass_gain;
 nld_L = fmL;
 nld_R = fmR;
 
-// ---- 6. Scale by envelope + intensity + calibration ----
+// ---- 6. Scale by envelope + calibration ----
+// Intensity now controls nld_drive (step 4) rather than a post-NLD gain,
+// so it is no longer multiplied here. harm_cal is a fixed internal calibration
+// constant; Harmonics Mix in step 10 controls the output blend level.
 harm_cal = 5.0;
-harm_L = nld_L * safe_env_L * intensity * harm_cal;
-harm_R = nld_R * safe_env_R * intensity * harm_cal;
+harm_L = nld_L * safe_env_L * harm_cal;
+harm_R = nld_R * safe_env_R * harm_cal;
 
 // ---- 7. Harmonic style blending + per-style LP ----
 // Full: NLD natural decay, no additional filtering.

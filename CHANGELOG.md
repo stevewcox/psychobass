@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.4.14] - 2026-03-15
+
+### Changed
+- **Original Bass moved to first slider**: now appears at the top of the controls
+  list, reflecting its role as the first decision in the setup workflow.
+- **Intensity default changed 60% → 50%**: centred for a more neutral starting
+  point given Intensity now controls NLD drive character rather than a simple level.
+- **Harmonics Mix default changed 65% → 50%**: centred to match Intensity.
+
+## [0.4.13] - 2026-03-15
+
+### Changed
+- **Intensity now controls NLD drive level**, not a post-NLD gain. `nld_drive =
+  intensity × 3.0`, so 50% default = drive 1.5, 60% = drive 1.8 (the previously
+  tuned value). This gives Intensity and Harmonics Mix genuinely different
+  behaviours:
+  - **Intensity** — changes harmonic *character*: low values give a sparse, subtle
+    series; high values give a richer, more saturated series with stronger
+    high-order content.
+  - **Harmonics Mix** — changes harmonic *level* only, without altering character.
+  Previously both were equivalent linear multipliers on the harmonic output.
+
 ## [0.4.12] - 2026-03-14
 
 ### Fixed

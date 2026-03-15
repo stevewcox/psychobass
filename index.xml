@@ -37,8 +37,17 @@ Suggested starting point for bass guitar:
   Tilt: 4dB, Style: Full]]></description>
         <link rel="website">https://github.com/stevewcox/SteveCoxJSFX</link>
       </metadata>
-      <version name="0.4.12" author="stevewcox" time="2026-03-14T00:00:00Z">
-        <changelog><![CDATA[v0.4.12 - Feedback state reset on bypass
+      <version name="0.4.14" author="stevewcox" time="2026-03-15T00:00:00Z">
+        <changelog><![CDATA[v0.4.14 - Slider reorder + default changes
+  - Original Bass moved to first slider position
+  - Intensity and Harmonics Mix defaults changed to 50%
+
+v0.4.13 - Intensity now controls NLD drive character
+  - Intensity: nld_drive = intensity × 3.0 (changes harmonic character)
+  - Harmonics Mix: post-processing blend level only (unchanged)
+  - Previously both were equivalent linear multipliers on harmonic output
+
+v0.4.12 - Feedback state reset on bypass
   - fmL/fmR feedback state now decays to zero during bypass by multiplying
     by bypass_gain each sample — prevents stale transient state on re-engagement
 
